@@ -11,6 +11,7 @@ const (
 	RJMP = 0xc0
 	RCALL = 0xd0
 	LDI = 0xe0
+	CLI = 0x90
 /* not used yet
 	ADIW = 0x96
 	ASR = 0x74
