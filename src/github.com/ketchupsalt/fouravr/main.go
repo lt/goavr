@@ -116,7 +116,7 @@ func LookUp(raw []byte) string {
 		if v == entry.Value {
 			return entry.Name
 		} else {
-			ret = fmt.Sprintf("%.16b", b)
+			ret = fmt.Sprintf("%.16b (0x%.4x)", b, b)
 		}
 	}
 	return ret
@@ -133,7 +133,8 @@ func main() {
 	file, _ := elf.Open(fileName)
 	t := getExecutableStuff(file)
 
-	for _, c := range chunkle(t, 2) {
+	for i, c := range chunkle(t, 2) {
+		fmt.Printf(".text:0x%.8x\t", (i << 1))
 		//fmt.Printf(hex.Dump(c))
 		dissAssemble(c)
 	}
