@@ -62,7 +62,6 @@ func dissAssemble(b []byte) {
 
 	case "nop":
 		fmt.Println("nop")
-
 	case "adc":
 		// CPSE, ADC
 		fmt.Println("adc")
@@ -75,7 +74,6 @@ func dissAssemble(b []byte) {
 		dddd := (b[0] >> 4) & 0x0f
 
 		fmt.Printf("%.4x\teor\tr%d,r%d\t\t;??%b %b\n", bigEndianConcat(b), rrrr, dddd, r, d)
-
 	case "out":
 		//out := (b[1] >> 3) & 0xff
 		AA := (b[1] & 0x06) >> 1
@@ -101,20 +99,27 @@ func dissAssemble(b []byte) {
 		fmt.Printf("%.4x\tldi\tr%x,0x%.2x\t\t;%d\n", bigEndianConcat(b), Rd, cdata, Rd)
 	case "rcall":
 		fmt.Printf("%.4x\trcall\n", bigEndianConcat(b))
+	case "sbi":
+		AAAA := b[0] >> 3
+		bbb := b[0] & 0x7
+		fmt.Printf("%.4x\tsbi\t0x%x,%d\n", bigEndianConcat(b),AAAA, bbb)
 	default:
-		fmt.Printf("None of the above. Got %b\n", m)
+		fmt.Printf("None of the above. Got %s\n", m)
 	}
 }
 
 func LookUp(raw []byte) string {
-
+	var ret string
+	b := littleEndianConcat(raw)
 	for _, entry := range OpCodeLookUpTable {
-		v := littleEndianConcat(raw) & entry.Mask
+		v := b & entry.Mask
 		if v == entry.Value {
 			return entry.Name
+		} else {
+			ret = fmt.Sprintf("%.16b", b)
 		}
 	}
-	return "Not found"
+	return ret
 }
 
 func main() {

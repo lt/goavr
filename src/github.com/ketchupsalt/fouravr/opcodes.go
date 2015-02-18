@@ -112,4 +112,24 @@ var OpCodeLookUpTable = []OpCode{
 		Mask: 0xff00,
 		Value: 0x9a00,
 	},
+	OpCode{
+		Name: "cpi",
+		Mask: 0xf000,
+		Value: 0x3000,
+	},
+	OpCode{
+		Name: "breq",
+		Mask: 0xfc07,
+		Value: 0xf001,
+	},
+	OpCode{
+		Name: "subi",
+		Mask: 0xf000,
+		Value: 0x5000,
+	},
+	OpCode{
+		Name: "brne",
+		Mask: 0xfc07,
+		Value: 0xf401,
+	},
 }
