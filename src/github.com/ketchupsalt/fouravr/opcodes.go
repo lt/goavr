@@ -242,12 +242,102 @@ var OpCodeLookUpTable = []OpCode{
 		Mask: 0xf000,
 		Value: 0x7000,
 	},
+	OpCode{
+		Name: "sbic",
+		Mask: 0xfd00,
+		Value: 0x9900,
+	},
+	OpCode{
+		Name: "bst",
+		Mask: 0xfe08,
+		Value: 0xfa00,
+	},
+	OpCode{
+		Name: "bld",
+		Mask: 0xfe08,
+		Value: 0xf800,
+	},
+	OpCode{
+		Name: "sei",
+		Mask: 0xffff,
+		Value: 0x9478,
+	},
+	OpCode{
+		Name: "brge",
+		Mask: 0xfc07,
+		Value: 0xf404,
+	},
+	OpCode{
+		Name: "brtc",
+		Mask: 0xfc07,
+		Value: 0xf406,
+	},
+	OpCode{
+		Name: "com",
+		Mask: 0xfe0f,
+		Value: 0x9400,
+	},
+	OpCode{
+		Name: "sbrc",
+		Mask: 0xfe08,
+		Value: 0xfc00,
+	},
+	OpCode{
+		Name: "neg",
+		Mask: 0xfe0f,
+		Value: 0x9401,
+	},
+	OpCode{
+		Name: "sub",
+		Mask: 0xfc00,
+		Value: 0x1800,
+	},
+	OpCode{
+		Name: "dec",
+		Mask: 0xfe0f,
+		Value: 0x940a,
+	},
+	OpCode{
+		Name: "mul",
+		Mask: 0xfc00,
+		Value: 0x9c00,
+	},
+	// =======
 	// Things that work with registers
+	// This are tricky. the q values are interpolated into the other bits.
+	// But applying the same mask as the other LD w/Z ops gives 0x8001.
+	// I'm going to leave it this way until another opcode with that value comes
+	// along (and hope that it won't).
+	// XXX TODO: This screws up the actual mask value for this opcode. Which
+	// Likely means that the way I'm doing all of these opcodes is wrong. Yay.
+	// ========
+	// LD Rd, X
+	OpCode{
+		Name: "ldx",
+		Mask: 0xfe0f,
+		Value: 0x900c,
+	},
+	// LD Rd, Z
+	// LDD Rd, Y+q
+	// LDD Rd, Z+q
+	OpCode{
+		Name: "ldd",
+		Mask: 0xde00,
+		Value: 0x8000,
+	},
 	// ST X+, Rr
 	OpCode{
 		Name: "stx+",
 		Mask: 0xfe0f,
 		Value: 0x920d,
+	},
+	// ST Z, Rr
+	// STD Y+q, Rr
+	// STD Z+q, Rr
+	OpCode{
+		Name: "std",
+		Mask: 0xde00,
+		Value: 0x8200,
 	},
 	// LPM Rd, Z+
 	OpCode{
@@ -255,46 +345,9 @@ var OpCodeLookUpTable = []OpCode{
 		Mask: 0xfeff,
 		Value: 0x9005,
 	},
-	// LD Rd, X
-	OpCode{
-		Name: "ldx",
-		Mask: 0xfe0f,
-		Value: 0x900c,
-	},
-	// ST Z, Rr
-	// Same note as ldz+q below.
-	OpCode{
-		Name: "stz",
-		Mask: 0xfe0f,
-		Value: 0x8200,
-	},
-	// STD Y+q, Rr
-	// Same note as ldz+q below.
-	OpCode{
-		Name: "stdy+q",
-		Mask: 0xfe08,
-		Value: 0x8208,
-	},
-	// LD Rd, Z
-	OpCode{
-		Name: "ldy+q",
-		Mask: 0xfe0f,
-		Value: 0x8000,
-	},
-	// This is a tricky one. the q values are interpolated into the other bits.
-	// But applying the same mask as the other LD w/Z ops gives 0x8001.
-	// I'm going to leave it this way until another opcode with that value comes
-	// along (and hope that it won't).
-	// XXX TODO: This screws up the actual mask value for this opcode. Which
-	// Likely means that the way I'm doing all of these opcodes is wrong. Yay.
-	// LD Rd, Z+q
-	OpCode{
-		Name: "ldz+q",
-		Mask: 0xfe0f,
-		Value: 0x8001,
-	},
+	// =======
 	// END things that work with registers
-	// ====== Here be
+	// ======
 	// 32 bit opcodes:
 	OpCode{
 		Name: "lds",

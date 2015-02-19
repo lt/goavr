@@ -114,12 +114,43 @@ func LookUp(raw []byte) string {
 	for _, entry := range OpCodeLookUpTable {
 		v := b & entry.Mask
 		if v == entry.Value {
+			switch entry.Name {
+			case "std":
+				return funkyChicken(b)
+			case "ldd":
+				return funkyChicken(b)
+			}
 			return entry.Name
 		} else {
 			ret = fmt.Sprintf("%.16b (0x%.4x)", b, b)
 		}
 	}
 	return ret
+}
+
+func funkyChicken(b uint16) string {
+	x := b  & 0xd208
+	offset := b & 0x2c07
+	switch x {
+	case 0x8000:
+		if offset == 0 {
+			return "ld"
+		} else {
+			return fmt.Sprintf("lddz+%d", offset)
+		}
+	case 0x8008:
+		return fmt.Sprintf("lddy+%d", offset)
+	case 0x8200:
+		if offset == 0 {
+			return "st"
+		} else {
+			return fmt.Sprintf("stdz+%d", offset)
+		}
+	case 0x8208:
+		return fmt.Sprintf("stdy+%d", offset)
+	default:
+		return "idunno"
+	}
 }
 
 func main() {
