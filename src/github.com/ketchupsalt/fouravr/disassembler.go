@@ -54,8 +54,11 @@ func dissAssemble(b []byte) {
 		bbb := b[0] & 0x7
 		fmt.Printf("%.4x\tsbi\t0x%x,%d\n", bigEndianConcat(b),AAAA, bbb)
 	case "sts":
-		fmt.Printf("sts\n")
-		//c := pop(data, 2)
+		c := pop(data, 2)
+		fmt.Printf("sts\t0x%.4x\n", bigEndianConcat(c))
+	case "lds":
+		c := pop(data, 2)
+		fmt.Printf("lds\t0x%.4x\n", bigEndianConcat(c))
 	default:
 		fmt.Printf("None of the above. Got %s\n", m)
 	}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"debug/elf"
+	//"fmt"
 )
 
 
@@ -11,7 +12,7 @@ func check(e error) {
 	}
 }
 
-func getExecutableStuff(file *elf.File, data []byte) {
+func getExecutableStuff(file *elf.File) {
 	var x int
 	for i, s := range file.Sections {
 		if s.SectionHeader.Name == ".text" {
@@ -20,7 +21,7 @@ func getExecutableStuff(file *elf.File, data []byte) {
 	}
 	ret, err := file.Sections[x].Data()
 	check(err)
-	copy(data, ret)
+	data = append(data, ret...)
 }
 
 func pop(a []byte, n int) []byte {

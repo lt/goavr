@@ -12,7 +12,8 @@ import (
 
 var fileName string
 var chunkSize int = 2
-var data =  make([]byte, 0)
+var data []byte
+
 
 func init() {
 	flag.StringVar(&fileName, "f", fileName, "File path, yo")
@@ -27,8 +28,8 @@ func main() {
 	}
 
 	file, _ := elf.Open(fileName)
-	getExecutableStuff(file, data)
-
+	getExecutableStuff(file)
+	
 	for i :=0 ; i < len(data); i++ {
 		fmt.Printf(".text:0x%.8x\t", (i << 1))
 		//fmt.Printf(hex.Dump(c))
