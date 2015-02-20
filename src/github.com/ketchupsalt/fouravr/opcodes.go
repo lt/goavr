@@ -283,6 +283,16 @@ var OpCodeLookUpTable = []OpCode{
 		Value: 0xfc00,
 	},
 	OpCode{
+		Name: "sbiw",
+		Mask: 0xff00,
+		Value: 0x9700,
+	},
+	OpCode{
+		Name: "sbr",
+		Mask: 0xfe08,
+		Value: 0x6000,
+		},
+	OpCode{
 		Name: "neg",
 		Mask: 0xfe0f,
 		Value: 0x9401,
@@ -317,6 +327,18 @@ var OpCodeLookUpTable = []OpCode{
 		Mask: 0xfe0f,
 		Value: 0x900c,
 	},
+	// LD Rd, X+
+	OpCode{
+		Name: "ldx+",
+		Mask: 0xfe0f,
+		Value: 0x900d,
+	},
+	// LD Rd, -X
+	OpCode{
+		Name: "ldx-",
+		Mask: 0xfe0f,
+		Value: 0x900e,
+	},
 	// LD Rd, Z
 	// LDD Rd, Y+q
 	// LDD Rd, Z+q
@@ -325,11 +347,23 @@ var OpCodeLookUpTable = []OpCode{
 		Mask: 0xde00,
 		Value: 0x8000,
 	},
+	// ST X, Rr
+	OpCode{
+		Name: "stx",
+		Mask: 0xfe0f,
+		Value: 0x920c,
+	},	
 	// ST X+, Rr
 	OpCode{
 		Name: "stx+",
 		Mask: 0xfe0f,
 		Value: 0x920d,
+	},
+	// ST -X, Rr
+	OpCode{
+		Name: "stx-",
+		Mask: 0xfe0f,
+		Value: 0x920e,
 	},
 	// ST Z, Rr
 	// STD Y+q, Rr
@@ -339,6 +373,30 @@ var OpCodeLookUpTable = []OpCode{
 		Mask: 0xde00,
 		Value: 0x8200,
 	},
+	// ST Y+, Rr
+	OpCode{
+		Name: "sty+",
+		Mask: 0xfe0f,
+		Value: 0x9209,
+	},
+	// ST -Y, Rr
+	OpCode{
+		Name: "sty-",
+		Mask: 0xfe0f,
+		Value: 0x920a,
+	},
+	// ST Z+, Rr
+	OpCode{
+		Name: "stz+",
+		Mask: 0xfe0f,
+		Value: 0x9201,
+	},
+	// ST -Z, Rr
+		OpCode{
+		Name: "stz-",
+		Mask: 0xfe0f,
+		Value: 0x9202,
+		},
 	// LPM Rd, Z+
 	OpCode{
 		Name: "lpmz+",

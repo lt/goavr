@@ -116,9 +116,9 @@ func LookUp(raw []byte) string {
 		if v == entry.Value {
 			switch entry.Name {
 			case "std":
-				return funkyChicken(b)
+				return deConvoluter(b)
 			case "ldd":
-				return funkyChicken(b)
+				return deConvoluter(b)
 			}
 			return entry.Name
 		} else {
@@ -128,26 +128,34 @@ func LookUp(raw []byte) string {
 	return ret
 }
 
-func funkyChicken(b uint16) string {
+func deConvoluter(b uint16) string {
 	x := b  & 0xd208
 	offset := b & 0x2c07
 	switch x {
 	case 0x8000:
 		if offset == 0 {
-			return "ld"
+			return "ldz"
 		} else {
 			return fmt.Sprintf("lddz+%d", offset)
 		}
 	case 0x8008:
-		return fmt.Sprintf("lddy+%d", offset)
+		if offset == 0 {
+			return "ldy"
+		} else {
+			return fmt.Sprintf("lddy+%d", offset)
+		}
 	case 0x8200:
 		if offset == 0 {
-			return "st"
+			return "stz"
 		} else {
 			return fmt.Sprintf("stdz+%d", offset)
 		}
 	case 0x8208:
-		return fmt.Sprintf("stdy+%d", offset)
+		if offset == 0 {
+			return "sty"
+		} else {
+			return fmt.Sprintf("stdy+%d", offset)
+		}
 	default:
 		return "idunno"
 	}
