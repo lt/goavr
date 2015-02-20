@@ -1,41 +1,11 @@
 package main
 
-// Bloody heck.
-
-const (
-	EOR = 0x20
-	ADD = 0x30
-	ADC = 0x70
-	AND = 0x80
-	IN = 0xb0
-	OUT = 0xb8
-	RJMP = 0xc0
-	RCALL = 0xd0
-	LDI = 0xe0
-	CLI = 0x90
-	SBI = 0x9a
-/* not used yet
-	ADIW = 0x96
-	ASR = 0x74
-	BCLR = 0x148
-	PUSH = 0x73
-	POP = 0x72
-*/
-)
-
-
 type OpCode struct {
 	Value uint16
 	Mask uint16
 	Op int
 	Name string
 }
-
-
-type HookUp struct {
-	Set []OpCode
-}
-
 
 // Look up the mask, return a parsed opcode
 func parseOpCode(b []byte) OpCode {
