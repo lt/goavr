@@ -59,6 +59,130 @@ func dissAssemble(b []byte) {
 	case "lds":
 		c := pop(data, 2)
 		fmt.Printf("lds\t0x%.4x\n", bigEndianConcat(c))
+	case "add":
+		fmt.Printf("add\n")
+	case "adiw":
+		fmt.Printf("adiw\n")
+	case "andi":
+		fmt.Printf("andi\n")
+	case "bld":
+		fmt.Printf("bld\n")
+	case "brcc":
+		fmt.Printf("brcc\n")
+	case "brcs":
+		fmt.Printf("brcs\n")
+	case "breq":
+		fmt.Printf("breq\n")
+	case "brge":
+		fmt.Printf("brge\n")
+	case "brne":
+		fmt.Printf("brne\n")
+	case "brtc":
+		fmt.Printf("brtc\n")
+	case "bst":
+		fmt.Printf("bst\n")
+	case "cbi":
+		fmt.Printf("cbi\n")
+	case "com":
+		fmt.Printf("com\n")
+	case "cp":
+		fmt.Printf("cp\n")
+	case "cpc":
+		fmt.Printf("cpc\n")
+	case "cpi":
+		fmt.Printf("cpi\n")
+	case "cpse":
+		fmt.Printf("cpse\n")
+	case "dec":
+		fmt.Printf("dec\n")
+	case "in":
+		fmt.Printf("in\n")
+	case "lddy+1":
+		fmt.Printf("lddy+1\n")
+	case "lddy+2":
+		fmt.Printf("lddy+2\n")
+	case "lddy+3":
+		fmt.Printf("lddy+3\n")
+	case "lddz+1":
+		fmt.Printf("lddz+1\n")
+	case "lddz+2":
+		fmt.Printf("lddz+2\n")
+	case "lddz+3":
+		fmt.Printf("lddz+3\n")
+	case "ldx":
+		fmt.Printf("ldx\n")
+	case "ldx+":
+		fmt.Printf("ldx+\n")
+	case "ldy":
+		fmt.Printf("ldy\n")
+	case "ldz":
+		fmt.Printf("ldz\n")
+	case "lpmz+":
+		fmt.Printf("lpmz+\n")
+	case "lsr":
+		fmt.Printf("lsr\n")
+	case "mov":
+		fmt.Printf("mov\n")
+	case "movw":
+		fmt.Printf("movw\n")
+	case "mul":
+		fmt.Printf("mul\n")
+	case "neg":
+		fmt.Printf("neg\n")
+	case "or":
+		fmt.Printf("or\n")
+	case "ori":
+		fmt.Printf("ori\n")
+	case "pop":
+		fmt.Printf("pop\n")
+	case "push":
+		fmt.Printf("push\n")
+	case "ret":
+		fmt.Printf("ret\n")
+	case "reti":
+		fmt.Printf("reti\n")
+	case "ror":
+		fmt.Printf("ror\n")
+	case "sbc":
+		fmt.Printf("sbc\n")
+	case "sbci":
+		fmt.Printf("sbci\n")
+	case "sbic":
+		fmt.Printf("sbic\n")
+	case "sbis":
+		fmt.Printf("sbis\n")
+	case "sbiw":
+		fmt.Printf("sbiw\n")
+	case "sbrc":
+		fmt.Printf("sbrc\n")
+	case "sei":
+		fmt.Printf("sei\n")
+	case "stdy+1":
+		fmt.Printf("stdy+1\n")
+	case "stdy+2":
+		fmt.Printf("stdy+2\n")
+	case "stdz+1":
+		fmt.Printf("stdz+1\n")
+	case "stdz+2":
+		fmt.Printf("stdz+2\n")
+	case "stdz+3":
+		fmt.Printf("stdz+3\n")
+	case "stx":
+		fmt.Printf("stx\n")
+	case "stx+":
+		fmt.Printf("stx+\n")
+	case "stx-":
+		fmt.Printf("stx-\n")
+	case "sty":
+		fmt.Printf("sty\n")
+	case "stz":
+		fmt.Printf("stz\n")
+	case "stz+":
+		fmt.Printf("stz+\n")
+	case "sub":
+		fmt.Printf("sub\n")
+	case "subi":
+		fmt.Printf("subi\n")
 	default:
 		fmt.Printf("None of the above. Got %s\n", m)
 	}

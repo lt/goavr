@@ -11,7 +11,7 @@ import (
 )
 
 var fileName string
-var chunkSize int = 2
+var cSize int = 2
 var data []byte
 
 
@@ -29,7 +29,8 @@ func main() {
 
 	file, _ := elf.Open(fileName)
 	getExecutableStuff(file)
-	
+	// This loop has a bug. XXX TODO(erin)
+	// (runs out of data -- maybe while data != empty?)
 	for i :=0 ; i < len(data); i++ {
 		fmt.Printf(".text:0x%.8x\t", (i << 1))
 		//fmt.Printf(hex.Dump(c))
