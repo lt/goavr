@@ -29,11 +29,12 @@ func main() {
 
 	file, _ := elf.Open(fileName)
 	getExecutableStuff(file)
-	// This loop has a bug. XXX TODO(erin)
-	// (runs out of data -- maybe while data != empty?)
-	for i :=0 ; i < len(data); i++ {
+
+	i := 0
+	for len(data) > 0 {
 		fmt.Printf(".text:0x%.8x\t", (i << 1))
 		//fmt.Printf(hex.Dump(c))
-		dissAssemble(pop(data, 2))
+		dissAssemble(pop(2))
+		i++
 	}
 }

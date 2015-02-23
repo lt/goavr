@@ -5,9 +5,10 @@ type OpCode struct {
 	Mask uint16
 	Op int
 	Name string
+	Offset uint16
 }
 
-// Look up the mask, return a parsed opcode
+// Return a parsed opcode from a byte. Not used (yet)
 func parseOpCode(b []byte) OpCode {
 	o := OpCode{}
 	return o

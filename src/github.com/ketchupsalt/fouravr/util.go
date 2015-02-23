@@ -24,10 +24,10 @@ func getExecutableStuff(file *elf.File) {
 	data = append(data, ret...)
 }
 
-func pop(a []byte, n int) []byte {
+func pop(n int) []byte {
 	ret := make([]byte, n)
-	copy(ret, a)
-	a = append(a[:0], a[n:]...)
+	copy(ret, data)
+	data = append(data[:0], data[n:]...)
 	return ret	
 }
 

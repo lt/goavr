@@ -8,14 +8,13 @@ import (
 func dissAssemble(b []byte) {
 	m := LookUp(b)
 
-	switch m {
+	switch m.Name {
 
 	case "nop":
 		fmt.Println("nop")
 	case "adc":
 		// CPSE, ADC
-		fmt.Println("adc")
-
+		fmt.Printf("%.4x\tadc\n",  bigEndianConcat(b))
 	case "eor":
 		r := b[1] & 0x02
 		d := b[1] & 0x01
@@ -54,189 +53,185 @@ func dissAssemble(b []byte) {
 		bbb := b[0] & 0x7
 		fmt.Printf("%.4x\tsbi\t0x%x,%d\n", bigEndianConcat(b),AAAA, bbb)
 	case "sts":
-		c := pop(data, 2)
-		fmt.Printf("sts\t0x%.4x\n", bigEndianConcat(c))
+		c := pop(2)
+		fmt.Printf("%.4x\tsts\t0x%.4x\n", bigEndianConcat(b), bigEndianConcat(c))
 	case "lds":
-		c := pop(data, 2)
-		fmt.Printf("lds\t0x%.4x\n", bigEndianConcat(c))
+		c := pop(2)
+		fmt.Printf("%.4x\tlds\t0x%.4x\n", bigEndianConcat(b), bigEndianConcat(c))
 	case "add":
-		fmt.Printf("add\n")
+		fmt.Printf("%.4x\tadd\n",  bigEndianConcat(b))
 	case "adiw":
-		fmt.Printf("adiw\n")
+		fmt.Printf("%.4x\tadiw\n",  bigEndianConcat(b))
 	case "andi":
-		fmt.Printf("andi\n")
+		fmt.Printf("%.4x\tandi\n",  bigEndianConcat(b))
 	case "bld":
-		fmt.Printf("bld\n")
+		fmt.Printf("%.4x\tbld\n",  bigEndianConcat(b))
 	case "brcc":
-		fmt.Printf("brcc\n")
+		fmt.Printf("%.4x\tbrcc\n",  bigEndianConcat(b))
 	case "brcs":
-		fmt.Printf("brcs\n")
+		fmt.Printf("%.4x\tbrcs\n",  bigEndianConcat(b))
 	case "breq":
-		fmt.Printf("breq\n")
+		fmt.Printf("%.4x\tbreq\n",  bigEndianConcat(b))
 	case "brge":
-		fmt.Printf("brge\n")
+		fmt.Printf("%.4x\tbrge\n",  bigEndianConcat(b))
 	case "brne":
-		fmt.Printf("brne\n")
+		fmt.Printf("%.4x\tbrne\n",  bigEndianConcat(b))
 	case "brtc":
-		fmt.Printf("brtc\n")
+		fmt.Printf("%.4x\tbrtc\n",  bigEndianConcat(b))
 	case "bst":
-		fmt.Printf("bst\n")
+		fmt.Printf("%.4x\tbst\n",  bigEndianConcat(b))
 	case "cbi":
-		fmt.Printf("cbi\n")
+		fmt.Printf("%.4x\tcbi\n",  bigEndianConcat(b))
 	case "com":
-		fmt.Printf("com\n")
+		fmt.Printf("%.4x\tcom\n",  bigEndianConcat(b))
 	case "cp":
-		fmt.Printf("cp\n")
+		fmt.Printf("%.4x\tcp\n",  bigEndianConcat(b))
 	case "cpc":
-		fmt.Printf("cpc\n")
+		fmt.Printf("%.4x\tcpc\n",  bigEndianConcat(b))
 	case "cpi":
-		fmt.Printf("cpi\n")
+		fmt.Printf("%.4x\tcpi\n",  bigEndianConcat(b))
 	case "cpse":
-		fmt.Printf("cpse\n")
+		fmt.Printf("%.4x\tcpse\n",  bigEndianConcat(b))
 	case "dec":
-		fmt.Printf("dec\n")
+		fmt.Printf("%.4x\tdec\n",  bigEndianConcat(b))
 	case "in":
-		fmt.Printf("in\n")
-	case "lddy+1":
-		fmt.Printf("lddy+1\n")
-	case "lddy+2":
-		fmt.Printf("lddy+2\n")
-	case "lddy+3":
-		fmt.Printf("lddy+3\n")
-	case "lddz+1":
-		fmt.Printf("lddz+1\n")
-	case "lddz+2":
-		fmt.Printf("lddz+2\n")
-	case "lddz+3":
-		fmt.Printf("lddz+3\n")
+		fmt.Printf("%.4x\tin\n",  bigEndianConcat(b))
+	case "lddy+":
+		fmt.Printf("%.4x\tldd Y+%d\n",  bigEndianConcat(b), m.Offset)
+	case "lddz+":
+		fmt.Printf("%.4x\tldd Z+%d\n",  bigEndianConcat(b), m.Offset)
 	case "ldx":
-		fmt.Printf("ldx\n")
+		fmt.Printf("%.4x\tldx\n",  bigEndianConcat(b))
 	case "ldx+":
-		fmt.Printf("ldx+\n")
+		fmt.Printf("%.4x\tldx+\n",  bigEndianConcat(b))
 	case "ldy":
-		fmt.Printf("ldy\n")
+		fmt.Printf("%.4x\tldy\n",  bigEndianConcat(b))
 	case "ldz":
-		fmt.Printf("ldz\n")
+		fmt.Printf("%.4x\tldz\n",  bigEndianConcat(b))
 	case "lpmz+":
-		fmt.Printf("lpmz+\n")
+		fmt.Printf("%.4x\tlpmz+\n",  bigEndianConcat(b))
 	case "lsr":
-		fmt.Printf("lsr\n")
+		fmt.Printf("%.4x\tlsr\n",  bigEndianConcat(b))
 	case "mov":
-		fmt.Printf("mov\n")
+		fmt.Printf("%.4x\tmov\n",  bigEndianConcat(b))
 	case "movw":
-		fmt.Printf("movw\n")
+		fmt.Printf("%.4x\tmovw\n",  bigEndianConcat(b))
 	case "mul":
-		fmt.Printf("mul\n")
+		fmt.Printf("%.4x\tmul\n",  bigEndianConcat(b))
 	case "neg":
-		fmt.Printf("neg\n")
+		fmt.Printf("%.4x\tneg\n",  bigEndianConcat(b))
 	case "or":
-		fmt.Printf("or\n")
+		fmt.Printf("%.4x\tor\n",  bigEndianConcat(b))
 	case "ori":
-		fmt.Printf("ori\n")
+		fmt.Printf("%.4x\tori\n",  bigEndianConcat(b))
 	case "pop":
-		fmt.Printf("pop\n")
+		fmt.Printf("%.4x\tpop\n",  bigEndianConcat(b))
 	case "push":
-		fmt.Printf("push\n")
+		fmt.Printf("%.4x\tpush\n",  bigEndianConcat(b))
 	case "ret":
-		fmt.Printf("ret\n")
+		fmt.Printf("%.4x\tret\n",  bigEndianConcat(b))
 	case "reti":
-		fmt.Printf("reti\n")
+		fmt.Printf("%.4x\treti\n",  bigEndianConcat(b))
 	case "ror":
-		fmt.Printf("ror\n")
+		fmt.Printf("%.4x\tror\n",  bigEndianConcat(b))
 	case "sbc":
-		fmt.Printf("sbc\n")
+		fmt.Printf("%.4x\tsbc\n",  bigEndianConcat(b))
 	case "sbci":
-		fmt.Printf("sbci\n")
+		fmt.Printf("%.4x\tsbci\n",  bigEndianConcat(b))
 	case "sbic":
-		fmt.Printf("sbic\n")
+		fmt.Printf("%.4x\tsbic\n",  bigEndianConcat(b))
 	case "sbis":
-		fmt.Printf("sbis\n")
+		fmt.Printf("%.4x\tsbis\n",  bigEndianConcat(b))
 	case "sbiw":
-		fmt.Printf("sbiw\n")
+		fmt.Printf("%.4x\tsbiw\n",  bigEndianConcat(b))
 	case "sbrc":
-		fmt.Printf("sbrc\n")
+		fmt.Printf("%.4x\tsbrc\n",  bigEndianConcat(b))
 	case "sei":
-		fmt.Printf("sei\n")
-	case "stdy+1":
-		fmt.Printf("stdy+1\n")
-	case "stdy+2":
-		fmt.Printf("stdy+2\n")
-	case "stdz+1":
-		fmt.Printf("stdz+1\n")
-	case "stdz+2":
-		fmt.Printf("stdz+2\n")
-	case "stdz+3":
-		fmt.Printf("stdz+3\n")
+		fmt.Printf("%.4x\tsei\n",  bigEndianConcat(b))
+	case "stdy+":
+		fmt.Printf("%.4x\tstd Y+%d\n",  bigEndianConcat(b), m.Offset)
+	case "stdz+":
+		fmt.Printf("%.4x\tstd Z+%d\n",  bigEndianConcat(b), m.Offset)
 	case "stx":
-		fmt.Printf("stx\n")
+		fmt.Printf("%.4x\tstx\n",  bigEndianConcat(b))
 	case "stx+":
-		fmt.Printf("stx+\n")
+		r := (littleEndianConcat(b) & 0x01f0) >> 4
+		fmt.Printf("%.4x\tst X+, r%d\n",  bigEndianConcat(b), r)
 	case "stx-":
-		fmt.Printf("stx-\n")
+		fmt.Printf("%.4x\tstx-\n",  bigEndianConcat(b))
 	case "sty":
-		fmt.Printf("sty\n")
+		fmt.Printf("%.4x\tsty\n",  bigEndianConcat(b))
 	case "stz":
-		fmt.Printf("stz\n")
+		fmt.Printf("%.4x\tstz\n",  bigEndianConcat(b))
 	case "stz+":
-		fmt.Printf("stz+\n")
+		fmt.Printf("%.4x\tstz+\n",  bigEndianConcat(b))
+	case "stz-":
+		fmt.Printf("%.4x\tstz-\n",  bigEndianConcat(b))
 	case "sub":
-		fmt.Printf("sub\n")
+		fmt.Printf("%.4x\tsub\n",  bigEndianConcat(b))
 	case "subi":
-		fmt.Printf("subi\n")
+		fmt.Printf("%.4x\tsubi\n",  bigEndianConcat(b))
 	default:
-		fmt.Printf("None of the above. Got %s\n", m)
+		fmt.Printf("None of the above. Got %s (0x%.4x)\n", m.Name, bigEndianConcat(b) )
 	}
 }
 
-func LookUp(raw []byte) string {
-	var ret string
+func LookUp(raw []byte) OpCode {
+	var op OpCode
 	b := littleEndianConcat(raw)
 	for _, entry := range OpCodeLookUpTable {
 		v := b & entry.Mask
 		if v == entry.Value {
+			op = entry
 			switch entry.Name {
 			case "std":
-				return deConvoluter(b)
+				return deConvoluter(b, op)
 			case "ldd":
-				return deConvoluter(b)
+				return deConvoluter(b, op)
 			}
-			return entry.Name
+			return op
 		} else {
-			ret = fmt.Sprintf("%.16b (0x%.4x)", b, b)
+			op = OpCode{Name: "Unknown", Value: b}
 		}
 	}
-	return ret
+	return op
 }
 
-func deConvoluter(b uint16) string {
+func deConvoluter(b uint16, op OpCode) OpCode {
 	x := b  & 0xd208
 	offset := b & 0x2c07
 	switch x {
 	case 0x8000:
 		if offset == 0 {
-			return "ldz"
+			op.Name = "ldz"
 		} else {
-			return fmt.Sprintf("lddz+%d", offset)
+			op.Name = "lddz+"
+			op.Offset = offset
 		}
 	case 0x8008:
 		if offset == 0 {
-			return "ldy"
+			 op.Name = "ldy"
 		} else {
-			return fmt.Sprintf("lddy+%d", offset)
+			op.Name = "lddy+"
+			op.Offset = offset
 		}
 	case 0x8200:
 		if offset == 0 {
-			return "stz"
+			op.Name = "stz"
 		} else {
-			return fmt.Sprintf("stdz+%d", offset)
+			op.Name = "stdz+"
+			op.Offset = offset
 		}
 	case 0x8208:
 		if offset == 0 {
-			return "sty"
+			op.Name = "sty"
 		} else {
-			return fmt.Sprintf("stdy+%d", offset)
+			op.Name = "stdy+"
+			op.Offset = offset
 		}
 	default:
-		return "idunno"
+		op.Name = "Unknown"
+		op.Value = b
 	}
+	return op
 }
