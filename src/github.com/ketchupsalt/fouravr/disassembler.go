@@ -89,14 +89,11 @@ func dissAssemble(b []byte) {
 	case "brcs":
 		fmt.Printf("%.4x\tbrcs\n",  b2u16big(b))
 	case "breq":
+		// Supposed to be -64<k<+63, but avr-objdump doesn't display
+		// these values this way.
 		// 1111 00kk kkkk k001
-		k := ((b[1] & 0x03) << 5) | ((b[0] & 0xf8) >>3)
-		if (k & 0x40) == 0 {
-			fmt.Printf("%.4x\tbreq\t.%d\n",  b2u16big(b), k)
-		} else {
-			fmt.Println("Found Negative BREQ. PLEASE FIX YOUR CODE NOW.")
-			fmt.Printf("%.4x\tbreq\t.%d\n",  b2u16big(b), ^k)
-		}
+		k := (((b[1] & 0x03) << 5) | ((b[0] & 0xf8) >>3)) << 1
+		fmt.Printf("%.4x\tbreq\t.%d\n",  b2u16big(b), k)
 	case "brge":
 		fmt.Printf("%.4x\tbrge\n",  b2u16big(b))
 	case "brne":

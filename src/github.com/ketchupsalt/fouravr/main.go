@@ -12,6 +12,7 @@ import (
 
 var fileName string
 var cSize int = 2
+var	instrCount = 0
 var data []byte
 
 
@@ -30,11 +31,9 @@ func main() {
 	file, _ := elf.Open(fileName)
 	getExecutableStuff(file)
 
-	i := 0
 	for len(data) > 0 {
-		fmt.Printf(".text:0x%.8x\t", (i << 1))
+		fmt.Printf(".text:0x%.8x\t", (instrCount))
 		//fmt.Printf(hex.Dump(c))
 		dissAssemble(pop(2))
-		i++
 	}
 }
