@@ -369,10 +369,16 @@ var OpCodeLookUpTable = []OpCode{
 		Value: 0x9202,
 		},
 	// LPM Rd, Z+
+	// LPM Rd, Z
 	OpCode{
-		Name: "lpmz+",
+		Name: "lpmz",
 		Mask: 0xfeff,
 		Value: 0x9005,
+	},
+	OpCode{
+		Name: "lpm",
+		Mask: 0xffff,
+		Value: 0x95c8,
 	},
 	// =======
 	// END things that work with registers

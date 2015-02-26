@@ -6,11 +6,15 @@ import (
 )
 
 
-func check(e error) {
-	if e != nil {
-		panic(e)
-	}
-}
+func b2u16big(in []byte) uint16 { return (uint16(in[0]) << 8) | uint16(in[1])}
+
+func b2i16big(in []byte) int16 { return (int16(in[0]) << 8) | int16(in[1])}
+
+func b2u16little(in []byte) uint16 { return (uint16(in[1]) << 8) | uint16(in[0]) }
+
+func b2i16little(in []byte) int16 { return (int16(in[1]) << 8) | int16(in[0]) }
+
+func check(e error) { if e != nil { panic(e) } }
 
 func getExecutableStuff(file *elf.File) {
 	var x int
@@ -43,12 +47,3 @@ func chunkle(blob []byte, csize int) [][]byte {
 	return fin
 }
 
-func bigEndianConcat(b []byte) uint16 {
-	ret := (uint16(b[0]) << 8) | uint16(b[1])
-	return ret
-}
-
-func littleEndianConcat(b []byte) uint16 {
-	ret := (uint16(b[1]) << 8) | uint16(b[0])
-	return ret
-}
