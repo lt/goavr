@@ -32,7 +32,7 @@ func main() {
 	getExecutableStuff(file)
 
 	for len(data) > 0 {
-		fmt.Printf(".text:0x%.8x\t", (instrCount))
+		fmt.Printf(".text:%.4x:\t", (instrCount))
 		//fmt.Printf(hex.Dump(c))
 		dissAssemble(pop(2))
 	}

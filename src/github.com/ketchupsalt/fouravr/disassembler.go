@@ -11,7 +11,7 @@ func dissAssemble(b []byte) {
 	switch m.Name {
 
 	case "nop":
-		fmt.Println("nop")
+		fmt.Printf("%.4x\tnop\n",  b2u16big(b))
 	case "adc":
 		// 0001 11rd dddd rrrr
 		Rr := (((b[1] & 0x02) >> 1) << 4 | (b[0] & 0x0f)) 
@@ -79,15 +79,38 @@ func dissAssemble(b []byte) {
 		Rd := ((b[1] & 0x01) << 4 | ((b[0] & 0xf0) >> 4))
 		fmt.Printf("%.4x\tadd\tr%d, r%d\n",  b2u16big(b), Rd, Rr)
 	case "adiw":
-		fmt.Printf("%.4x\tadiw\n",  b2u16big(b))
+		// 1001 0110 KKdd KKKK
+		// 24,26,28,30
+		dm := map[byte]int{
+			0: 24,
+			1: 26,
+			2: 28,
+			3: 30,
+		}
+		k := ((b[0] & 0xc0) >> 2) | (b[0] & 0x0f)
+		Rd := (b[0] & 0x30) >> 4
+		fmt.Printf("%.4x\tadiw\tr%d, 0x%.2x\n",  b2u16big(b), dm[Rd], k)
 	case "andi":
-		fmt.Printf("%.4x\tandi\n",  b2u16big(b))
+		//0111 KKKK dddd KKKK
+		K := ((b[1] & 0x0f) << 4) | (b[0] & 0x0f)
+		Rd := ((b[0] & 0xf0) >> 4) + 0x10
+		fmt.Printf("%.4x\tandi\tr%d, 0x%.2x\n",  b2u16big(b), Rd, K)
 	case "bld":
-		fmt.Printf("%.4x\tbld\n",  b2u16big(b))
+		// 1111 100d dddd 0bbb
+		Rd := ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
+		bit := b[0] & 0x07		
+		fmt.Printf("%.4x\tbld\tr%d, %d\n",  b2u16big(b), Rd, bit)
 	case "brcc":
-		fmt.Printf("%.4x\tbrcc\n",  b2u16big(b))
+		//1111 01kk kkkk k000
+		// 64 ≤ k ≤ +63
+		k := ((b[1] & 0x03) << 5) | ((b[0] & 0xf8) >> 3) << 1
+		fmt.Printf("%.4x\tbrcc\t.+%d\n",  b2u16big(b), k)
 	case "brcs":
-		fmt.Printf("%.4x\tbrcs\n",  b2u16big(b))
+		// Supposed to be -64<k<+63, but avr-objdump doesn't display
+		// these values this way.
+		// 1111 00kk kkkk k000
+		k := (((b[1] & 0x03) << 5) | ((b[0] & 0xf8) >>3)) << 1
+		fmt.Printf("%.4x\tbrcs\t.+%d\n",  b2u16big(b), k)
 	case "breq":
 		// Supposed to be -64<k<+63, but avr-objdump doesn't display
 		// these values this way.
@@ -95,7 +118,18 @@ func dissAssemble(b []byte) {
 		k := (((b[1] & 0x03) << 5) | ((b[0] & 0xf8) >>3)) << 1
 		fmt.Printf("%.4x\tbreq\t.%d\n",  b2u16big(b), k)
 	case "brge":
-		fmt.Printf("%.4x\tbrge\n",  b2u16big(b))
+		// 1111 01kk kkkk k100
+		k1 := ((b[1] & 0x03) << 5) 
+		k2 := ((b[0] & 0xf8) >> 3) << 1
+		// XXX TODO(erin) -- this might need to be << 1 -- haven't found a positive one yet.
+		k := k1 | k2
+		if k <= 64 {
+			fmt.Printf("%.4x\tbrge\t.%d\n",  b2u16big(b), k)
+		} else {
+			i := -b2i16little(b)
+			nk := (((i & 0x03f8) >> 3) + 1) << 1
+			fmt.Printf("%.4x\tbrge\t.-%d\n",  b2u16big(b), nk)
+		}
 	case "brne":
 		k := (b2u16little(b) & 0x03f8) >> 2
 		// check to see if msb of k is 1
@@ -110,7 +144,10 @@ func dissAssemble(b []byte) {
 	case "brtc":
 		fmt.Printf("%.4x\tbrtc\n",  b2u16big(b))
 	case "bst":
-		fmt.Printf("%.4x\tbst\n",  b2u16big(b))
+		// 1111 101d dddd 0bbb
+		Rd := ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
+		bit := b[0] & 0x07
+		fmt.Printf("%.4x\tbst\tr%d, %d\n",  b2u16big(b), Rd, bit)
 	case "cbi":
 		//1001 1000 AAAA Abbb
 		address := (b[0] & 0xf8) >> 3
@@ -119,7 +156,10 @@ func dissAssemble(b []byte) {
 	case "com":
 		fmt.Printf("%.4x\tcom\n",  b2u16big(b))
 	case "cp":
-		fmt.Printf("%.4x\tcp\n",  b2u16big(b))
+		// 0001 01rd dddd rrrr
+		Rr := (((b[1] & 0x02) >> 1) << 4 | (b[0] & 0x0f)) 
+		Rd := ((b[1] & 0x01) << 4 | ((b[0] & 0xf0) >> 4))
+		fmt.Printf("%.4x\tcp\tr%d, r%d\n",  b2u16big(b), Rd, Rr)
 	case "cpc":
 		Rr := ((b[1] & 0x02) << 3) | b[0] & 0x0f
 		Rd := ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
@@ -143,17 +183,25 @@ func dissAssemble(b []byte) {
 		Rd := ((b[1] & 0xf1) << 4) | ((b[0] & 0xf0) >> 4)
 		fmt.Printf("%.4x\tin\tr%d, 0x%.2x\n",  b2u16big(b), Rd, address)
 	case "lddy+":
-		fmt.Printf("%.4x\tldd Y+%d\n",  b2u16big(b), m.Offset)
+		// 1001 000d dddd 1001
+		Rd := ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
+		fmt.Printf("%.4x\tldd\tY+%d, r%d\n",  b2u16big(b), m.Offset, Rd)
 	case "lddz+":
-		fmt.Printf("%.4x\tldd Z+%d\n",  b2u16big(b), m.Offset)
+		// 1001 000d dddd 0001
+		Rd := ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4 )
+		fmt.Printf("%.4x\tldd\tr%d, Z+%d\n",  b2u16big(b), Rd, m.Offset)
 	case "ldx":
-		fmt.Printf("%.4x\tldx\n",  b2u16big(b))
+		// 1001 000d dddd 1100
+		Rd := ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
+		fmt.Printf("%.4x\tld\tr%d, X\n",  b2u16big(b), Rd)
 	case "ldx+":
 		fmt.Printf("%.4x\tldx+\n",  b2u16big(b))
 	case "ldy":
 		fmt.Printf("%.4x\tldy\n",  b2u16big(b))
 	case "ldz":
-		fmt.Printf("%.4x\tldz\n",  b2u16big(b))
+		// 1000 000d dddd 0000
+		Rd := ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
+		fmt.Printf("%.4x\tld\tr%d, Z\n", b2u16big(b), Rd)
 	case "lpmz":
 		//z  1001 000d dddd 0100
 		//z+ 1001 000d dddd 0101
@@ -223,22 +271,38 @@ func dissAssemble(b []byte) {
 		KKKK := (b[1] & 0x0f) << 4 | (b[0] & 0x0f)
 		fmt.Printf("%.4x\tsbci\tr%d, 0x%x\n",  b2u16big(b), Rd, KKKK)
 	case "sbic":
-		fmt.Printf("%.4x\tsbic\n",  b2u16big(b))
+		// 1001 1001 AAAA Abbb
+		A := (b[0] & 0xf8) >> 3
+		bit := b[0] & 0x07
+		fmt.Printf("%.4x\tsbic\t0x%.2x, %d\n", b2u16big(b), A, bit)
 	case "sbis":
 		// 1001 1011 AAAA Abbb
 		address := (b[0] & 0xf8) >> 3
 		bit := b[0] & 0x07
 		fmt.Printf("%.4x\tsbis\t0x%.2x, %d\n",  b2u16big(b), address, bit)
 	case "sbiw":
-		fmt.Printf("%.4x\tsbiw\n",  b2u16big(b))
+		// 1001 0111 KKdd KKKK
+		dm := map[byte]int{
+			0: 24,
+			1: 26,
+			2: 28,
+			3: 30,
+		}
+		k := ((b[0] & 0xc0) >> 2) | (b[0] & 0x0f)
+		Rd := (b[0] & 0x30) >> 4
+		fmt.Printf("%.4x\tsbiw\tr%d, 0x%.2x\n",  b2u16big(b), dm[Rd], k)
 	case "sbrc":
 		fmt.Printf("%.4x\tsbrc\n",  b2u16big(b))
 	case "sei":
 		fmt.Printf("%.4x\tsei\n",  b2u16big(b))
 	case "stdy+":
-		fmt.Printf("%.4x\tstd Y+%d\n",  b2u16big(b), m.Offset)
+		// 1001 001r rrrr 1001
+		Rr := ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
+		fmt.Printf("%.4x\tstd Y+%d, r%d\n",  b2u16big(b), m.Offset, Rr)
 	case "stdz+":
-		fmt.Printf("%.4x\tstd Z+%d\n",  b2u16big(b), m.Offset)
+		// 10q0 qq1r rrrr 0qqq
+		Rr := ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
+		fmt.Printf("%.4x\tstd\tZ+%d, r%d\n",  b2u16big(b), m.Offset, Rr)
 	case "stx":
 		fmt.Printf("%.4x\tstx\n",  b2u16big(b))
 	case "stx+":
@@ -249,7 +313,9 @@ func dissAssemble(b []byte) {
 	case "sty":
 		fmt.Printf("%.4x\tsty\n",  b2u16big(b))
 	case "stz":
-		fmt.Printf("%.4x\tstz\n",  b2u16big(b))
+		// 1000 001r rrrr 0000
+		Rr := ((b[1] & 0x01) << 4)  | ((b[0] & 0xf0) >> 4)
+		fmt.Printf("%.4x\tst\tZ, r%d\n",  b2u16big(b), Rr)
 	case "stz+":
 		fmt.Printf("%.4x\tstz+\n",  b2u16big(b))
 	case "stz-":
