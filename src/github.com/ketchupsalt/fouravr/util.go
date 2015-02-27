@@ -5,16 +5,19 @@ import (
 	//"fmt"
 )
 
+func b2u16big(in []byte) uint16 { return (uint16(in[0]) << 8) | uint16(in[1]) }
 
-func b2u16big(in []byte) uint16 { return (uint16(in[0]) << 8) | uint16(in[1])}
-
-func b2i16big(in []byte) int16 { return (int16(in[0]) << 8) | int16(in[1])}
+func b2i16big(in []byte) int16 { return (int16(in[0]) << 8) | int16(in[1]) }
 
 func b2u16little(in []byte) uint16 { return (uint16(in[1]) << 8) | uint16(in[0]) }
 
 func b2i16little(in []byte) int16 { return (int16(in[1]) << 8) | int16(in[0]) }
 
-func check(e error) { if e != nil { panic(e) } }
+func check(e error) {
+	if e != nil {
+		panic(e)
+	}
+}
 
 func getExecutableStuff(file *elf.File) {
 	var x int
@@ -33,7 +36,7 @@ func pop(n int) []byte {
 	copy(ret, data)
 	data = append(data[:0], data[n:]...)
 	instrCount += n
-	return ret	
+	return ret
 }
 
 func chunkle(blob []byte, csize int) [][]byte {
@@ -47,4 +50,3 @@ func chunkle(blob []byte, csize int) [][]byte {
 	fin = append(fin, []byte(blob[x:]))
 	return fin
 }
-

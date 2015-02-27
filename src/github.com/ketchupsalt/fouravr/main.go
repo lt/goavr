@@ -12,9 +12,8 @@ import (
 
 var fileName string
 var cSize int = 2
-var	instrCount = 0
+var instrCount = 0
 var data []byte
-
 
 func init() {
 	flag.StringVar(&fileName, "f", fileName, "File path, yo")
