@@ -1,18 +1,14 @@
 package main
 
-// Balls
-
 import (
 	"debug/elf"
 	"flag"
 	"fmt"
-	//"encoding/hex"
-	//"reflect"
 )
 
 var fileName string
 var cSize int = 2
-var instrCount = 0
+var pc = 0
 var data []byte
 
 func init() {
@@ -31,8 +27,7 @@ func main() {
 	getExecutableStuff(file)
 
 	for len(data) > 0 {
-		fmt.Printf(".text:%.4x:\t", (instrCount))
-		//fmt.Printf(hex.Dump(c))
+		fmt.Printf(".text:%.4x:\t", (pc))
 		dissAssemble(pop(2))
 	}
 }

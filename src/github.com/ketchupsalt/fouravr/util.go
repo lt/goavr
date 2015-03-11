@@ -35,7 +35,7 @@ func pop(n int) []byte {
 	ret := make([]byte, n)
 	copy(ret, data)
 	data = append(data[:0], data[n:]...)
-	instrCount += n
+	pc += n
 	return ret
 }
 

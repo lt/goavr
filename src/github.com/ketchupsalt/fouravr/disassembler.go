@@ -7,31 +7,38 @@ import (
 func dissAssemble(b []byte) {
 	m := LookUp(b)
 
-	switch m.Name {
+	switch m.mnemonic {
 
 	case "nop":
+		i := Instr{mnemonic: m.mnemonic, family: m.family}
 		fmt.Printf("%.4x\tnop\n", b2u16big(b))
+		fmt.Println(i)
 	case "adc":
 		// 0001 11rd dddd rrrr
-		Rr := (((b[1]&0x02)>>1)<<4 | (b[0] & 0x0f))
-		Rd := ((b[1]&0x01)<<4 | ((b[0] & 0xf0) >> 4))
+		Rr := (((b[1] & 0x02) >> 1) << 4 | (b[0] & 0x0f))
+		Rd := ((b[1] & 0x01) << 4 | ((b[0] & 0xf0) >> 4))
+		i := Instr{mnemonic: m.mnemonic, family: m.family, source: Rr, dest: Rd}
 		fmt.Printf("%.4x\tadc\tr%d, r%d\n", b2u16big(b), Rd, Rr)
+		fmt.Println(i)
 	case "eor":
-		r := b[1] & 0x02
-		d := b[1] & 0x01
-		rrrr := b[0] & 0x0f
-		dddd := (b[0] >> 4) & 0x0f
-		fmt.Printf("%.4x\teor\tr%d, r%d\t;??%b %b\n", b2u16big(b), rrrr, dddd, r, d)
+		Rr := (((b[1] & 0x02) >> 1) << 4 | (b[0] & 0x0f))
+		Rd := ((b[1] & 0x01) << 4 | ((b[0] & 0xf0) >> 4))
+		i := Instr{mnemonic: m.mnemonic, source: Rr, dest: Rd, family: m.family}
+		fmt.Printf("%.4x\teor\tr%d, r%d\n", b2u16big(b), Rr, Rd)
+		fmt.Println(i)
 	case "out":
 		//out := (b[1] >> 3) & 0xff
 		AA1 := (b[1] & 0x06) >> 1
 		AA2 := b[0] & 0x0f
-		address := AA1<<4 | AA2
-		i := b2u16little(b)
-		Rr := (i & 0x01f0) >> 4
+		address := AA1 << 4 | AA2
+		Rr := ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
 		fmt.Printf("%.4x\tout\t0x%.2x, r%d\t\t;%d\n", b2u16big(b), address, Rr, address)
+		i := Instr{mnemonic: m.mnemonic, family: m.family, ioaddr: address, source: Rr}
+		fmt.Println(i)
 	case "cli":
 		fmt.Printf("%.4x\tcli\n", b2u16big(b))
+		i := Instr{mnemonic: m.mnemonic, family: m.family}
+		fmt.Println(i)
 	case "jmp":
 		// 1001 010k kkkk 110k kkkk kkkk kkkk kkkk
 		// XXX ToDo(erin): not tested.
@@ -40,16 +47,22 @@ func dissAssemble(b []byte) {
 		c := pop(2)
 		k := k1 | k2 //| c mismatched types.
 		fmt.Printf("%.4x\tlds\t0x%.4x\t;%d\n", b2u16big(b), b2u16little(c), k)
+		i := Instr{mnemonic: m.mnemonic, family: m.family, kaddress: k}
+		fmt.Println(i)
 	case "rjmp":
 		// 1100 KKKK dddd KKKK
+		i := Instr{mnemonic: m.mnemonic, family: m.family}
 		k := (b2u16little(b) & 0x0fff) << 1
 		if ((k & 0x800) >> 11) == 1 {
-			i := -b2i16little(b)
-			nk := (i & 0x0fff) << 1
+			op := -b2i16little(b)
+			nk := (op & 0x0fff) << 1
 			fmt.Printf("%.4x\trjmp\t.-%d\n", b2u16big(b), nk)
+			i.kaddress = nk
 		} else {
 			fmt.Printf("%.4x\trjmp\t.+%d\n", b2u16big(b), k)
+			i.kaddress = k
 		}
+		fmt.Println(i)
 	case "ldi":
 		K1 := b[1] & 0x0f
 		K2 := b[0] & 0x0f
@@ -206,11 +219,11 @@ func dissAssemble(b []byte) {
 	case "lddy+":
 		// 1001 000d dddd 1001
 		Rd := ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
-		fmt.Printf("%.4x\tldd\tY+%d, r%d\n", b2u16big(b), m.Offset, Rd)
+		fmt.Printf("%.4x\tldd\tY+%d, r%d\n", b2u16big(b), m.offset, Rd)
 	case "lddz+":
 		// 1001 000d dddd 0001
 		Rd := ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
-		fmt.Printf("%.4x\tldd\tr%d, Z+%d\n", b2u16big(b), Rd, m.Offset)
+		fmt.Printf("%.4x\tldd\tr%d, Z+%d\n", b2u16big(b), Rd, m.offset)
 	case "ldx":
 		// 1001 000d dddd 1100
 		Rd := ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
@@ -328,11 +341,11 @@ func dissAssemble(b []byte) {
 	case "stdy+":
 		// 1001 001r rrrr 1001
 		Rr := ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
-		fmt.Printf("%.4x\tstd\tY+%d, r%d\n", b2u16big(b), m.Offset, Rr)
+		fmt.Printf("%.4x\tstd\tY+%d, r%d\n", b2u16big(b), m.offset, Rr)
 	case "stdz+":
 		// 10q0 qq1r rrrr 0qqq
 		Rr := ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
-		fmt.Printf("%.4x\tstd\tZ+%d, r%d\n", b2u16big(b), m.Offset, Rr)
+		fmt.Printf("%.4x\tstd\tZ+%d, r%d\n", b2u16big(b), m.offset, Rr)
 	case "stx":
 		// 1001 001r rrrr 1100
 		Rr := ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
@@ -372,7 +385,7 @@ func dissAssemble(b []byte) {
 		KKKK := (b[1]&0x0f)<<4 | (b[0] & 0x0f)
 		fmt.Printf("%.4x\tsubi\tr%d, 0x%x\n", b2u16big(b), Rd, KKKK)
 	default:
-		fmt.Printf("None of the above. Got %s (0x%.4x)\n", m.Name, b2u16big(b))
+		fmt.Printf("None of the above. Got %s (0x%.4x)\n", m.mnemonic, b2u16big(b))
 	}
 }
 
@@ -380,10 +393,10 @@ func LookUp(raw []byte) OpCode {
 	var op OpCode
 	b := b2u16little(raw)
 	for _, entry := range OpCodeLookUpTable {
-		v := b & entry.Mask
-		if v == entry.Value {
+		v := b & entry.mask
+		if v == entry.value {
 			op = entry
-			switch entry.Name {
+			switch entry.mnemonic {
 			case "std":
 				return deConvoluter(b, op)
 			case "ldd":
@@ -391,7 +404,7 @@ func LookUp(raw []byte) OpCode {
 			}
 			return op
 		} else {
-			op = OpCode{Name: "Unknown", Value: b}
+			op = OpCode{mnemonic: "Unknown", value: b}
 		}
 	}
 	return op
@@ -403,35 +416,35 @@ func deConvoluter(b uint16, op OpCode) OpCode {
 	switch x {
 	case 0x8000:
 		if offset == 0 {
-			op.Name = "ldz"
+			op.mnemonic = "ldz"
 		} else {
-			op.Name = "lddz+"
-			op.Offset = offset
+			op.mnemonic = "lddz+"
+			op.offset = offset
 		}
 	case 0x8008:
 		if offset == 0 {
-			op.Name = "ldy"
+			op.mnemonic = "ldy"
 		} else {
-			op.Name = "lddy+"
-			op.Offset = offset
+			op.mnemonic = "lddy+"
+			op.offset = offset
 		}
 	case 0x8200:
 		if offset == 0 {
-			op.Name = "stz"
+			op.mnemonic = "stz"
 		} else {
-			op.Name = "stdz+"
-			op.Offset = offset
+			op.mnemonic = "stdz+"
+			op.offset = offset
 		}
 	case 0x8208:
 		if offset == 0 {
-			op.Name = "sty"
+			op.mnemonic = "sty"
 		} else {
-			op.Name = "stdy+"
-			op.Offset = offset
+			op.mnemonic = "stdy+"
+			op.offset = offset
 		}
 	default:
-		op.Name = "Unknown"
-		op.Value = b
+		op.mnemonic = "Unknown"
+		op.value = b
 	}
 	return op
 }
