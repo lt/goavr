@@ -160,13 +160,13 @@ type OpCode struct {
 
 type Instr struct {
 	family       family
-	mnemonic     string
+	label        int
 	offset       uint16
 	dest         byte
 	source       byte
 	result       byte
 	kdata        byte
-	kaddress     byte
+	kaddress     int16
 	ioaddr       byte
 	iar          map[string]uint16
 	displacement uint16
@@ -563,8 +563,8 @@ var OpCodeLookUpTable = []OpCode{
 		mnemonic: "ldx+",
 		mask:     0xfe0f,
 		value:    0x900d,
-		family: Transfers,
-		label: INSN_LDXP,
+		family:   Transfers,
+		label:    INSN_LDXP,
 	},
 	// LD Rd, -X
 	OpCode{
@@ -581,7 +581,7 @@ var OpCodeLookUpTable = []OpCode{
 		mnemonic: "ldd",
 		mask:     0xde00,
 		value:    0x8000,
-		family: Transfers,
+		family:   Transfers,
 		// Label set elsewhere
 	},
 	// ST X, Rr
@@ -589,24 +589,24 @@ var OpCodeLookUpTable = []OpCode{
 		mnemonic: "stx",
 		mask:     0xfe0f,
 		value:    0x920c,
-		family: Transfers,
-		label: INSN_STX,
+		family:   Transfers,
+		label:    INSN_STX,
 	},
 	// ST X+, Rr
 	OpCode{
 		mnemonic: "stx+",
 		mask:     0xfe0f,
 		value:    0x920d,
-		family: Transfers,
-		label: INSN_STXP,
+		family:   Transfers,
+		label:    INSN_STXP,
 	},
 	// ST -X, Rr
 	OpCode{
 		mnemonic: "stx-",
 		mask:     0xfe0f,
 		value:    0x920e,
-		family: Transfers,
-		label: INSN_STXM,
+		family:   Transfers,
+		label:    INSN_STXM,
 	},
 	// ST Z, Rr
 	// STD Y+q, Rr
@@ -615,7 +615,7 @@ var OpCodeLookUpTable = []OpCode{
 		mnemonic: "std",
 		mask:     0xde00,
 		value:    0x8200,
-		family: Transfers,
+		family:   Transfers,
 		// label set later
 	},
 	// ST Y+, Rr
@@ -623,32 +623,32 @@ var OpCodeLookUpTable = []OpCode{
 		mnemonic: "sty+",
 		mask:     0xfe0f,
 		value:    0x9209,
-		family: Transfers,
-		label: INSN_STYP,
+		family:   Transfers,
+		label:    INSN_STYP,
 	},
 	// ST -Y, Rr
 	OpCode{
 		mnemonic: "sty-",
 		mask:     0xfe0f,
 		value:    0x920a,
-		family: Transfers,
-		label: INSN_STYM,
+		family:   Transfers,
+		label:    INSN_STYM,
 	},
 	// ST Z+, Rr
 	OpCode{
 		mnemonic: "stz+",
 		mask:     0xfe0f,
 		value:    0x9201,
-		family: Transfers,
-		label: INSN_STZP,
+		family:   Transfers,
+		label:    INSN_STZP,
 	},
 	// ST -Z, Rr
 	OpCode{
 		mnemonic: "stz-",
 		mask:     0xfe0f,
 		value:    0x9202,
-		family: Transfers,
-		label: INSN_STZM,
+		family:   Transfers,
+		label:    INSN_STZM,
 	},
 	// LPM Rd, Z+
 	// LPM Rd, Z
@@ -656,15 +656,15 @@ var OpCodeLookUpTable = []OpCode{
 		mnemonic: "lpmz",
 		mask:     0xfeff,
 		value:    0x9005,
-		family: Transfers,
-		label: INSN_LPMZ,
+		family:   Transfers,
+		label:    INSN_LPMZ,
 	},
 	OpCode{
 		mnemonic: "lpm",
 		mask:     0xffff,
 		value:    0x95c8,
-		family: Transfers,
-		label: INSN_LPM,
+		family:   Transfers,
+		label:    INSN_LPM,
 	},
 	// =======
 	// END things that work with registers
@@ -674,14 +674,14 @@ var OpCodeLookUpTable = []OpCode{
 		mnemonic: "lds",
 		mask:     0xfe0f,
 		value:    0x9000,
-		family: Transfers,
-		label: INSN_LDS,
+		family:   Transfers,
+		label:    INSN_LDS,
 	},
 	OpCode{
 		mnemonic: "sts",
 		mask:     0xfe0f,
 		value:    0x9200,
-		family: Transfers,
-		label: INSN_STS,
+		family:   Transfers,
+		label:    INSN_STS,
 	},
 }

@@ -10,59 +10,55 @@ func dissAssemble(b []byte) {
 	switch m.label {
 
 	case INSN_NOP:
-		i := Instr{mnemonic: m.mnemonic, family: m.family}
 		fmt.Printf("%.4x\tnop\n", b2u16big(b))
+		i := Instr{label: m.label, family: m.family}
 		fmt.Println(i)
 	case INSN_ADC:
 		// 0001 11rd dddd rrrr
-		Rr := (((b[1] & 0x02) >> 1) << 4 | (b[0] & 0x0f))
-		Rd := ((b[1] & 0x01) << 4 | ((b[0] & 0xf0) >> 4))
-		i := Instr{mnemonic: m.mnemonic, family: m.family, source: Rr, dest: Rd}
+		Rr := (((b[1]&0x02)>>1)<<4 | (b[0] & 0x0f))
+		Rd := ((b[1]&0x01)<<4 | ((b[0] & 0xf0) >> 4))
 		fmt.Printf("%.4x\tadc\tr%d, r%d\n", b2u16big(b), Rd, Rr)
+		i := Instr{label: m.label, family: m.family, source: Rr, dest: Rd}
 		fmt.Println(i)
 	case INSN_EOR:
-		Rr := (((b[1] & 0x02) >> 1) << 4 | (b[0] & 0x0f))
-		Rd := ((b[1] & 0x01) << 4 | ((b[0] & 0xf0) >> 4))
-		i := Instr{mnemonic: m.mnemonic, source: Rr, dest: Rd, family: m.family}
+		Rr := (((b[1]&0x02)>>1)<<4 | (b[0] & 0x0f))
+		Rd := ((b[1]&0x01)<<4 | ((b[0] & 0xf0) >> 4))
 		fmt.Printf("%.4x\teor\tr%d, r%d\n", b2u16big(b), Rr, Rd)
+		i := Instr{label: m.label, source: Rr, dest: Rd, family: m.family}
 		fmt.Println(i)
 	case INSN_OUT:
 		//out := (b[1] >> 3) & 0xff
 		AA1 := (b[1] & 0x06) >> 1
 		AA2 := b[0] & 0x0f
-		address := AA1 << 4 | AA2
+		address := AA1<<4 | AA2
 		Rr := ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
 		fmt.Printf("%.4x\tout\t0x%.2x, r%d\t\t;%d\n", b2u16big(b), address, Rr, address)
-		i := Instr{mnemonic: m.mnemonic, family: m.family, ioaddr: address, source: Rr}
+		i := Instr{label: m.label, family: m.family, ioaddr: address, source: Rr}
 		fmt.Println(i)
 	case INSN_CLI:
 		fmt.Printf("%.4x\tcli\n", b2u16big(b))
-		i := Instr{mnemonic: m.mnemonic, family: m.family}
+		i := Instr{label: m.label, family: m.family}
 		fmt.Println(i)
 	case INSN_JMP:
 		// 1001 010k kkkk 110k kkkk kkkk kkkk kkkk
-		// XXX ToDo(erin): not tested.
+		// XXX ToDo(erin): THIS HAS NOT BEEN TESTED
 		k1 := (b[1] & 0x01) << 21
 		k2 := ((b[0] & 0xf0) >> 3) | ((b[1] & 0x01) << 3)
 		c := pop(2)
 		k := k1 | k2 //| c mismatched types.
 		fmt.Printf("%.4x\tlds\t0x%.4x\t;%d\n", b2u16big(b), b2u16little(c), k)
-		i := Instr{mnemonic: m.mnemonic, family: m.family, kaddress: k}
+		i := Instr{label: m.label, family: m.family}
 		fmt.Println(i)
 	case INSN_RJMP:
-		// 1100 KKKK dddd KKKK
-		i := Instr{mnemonic: m.mnemonic, family: m.family}
-		k := (b2u16little(b) & 0x0fff) << 1
+		// 1100 kkkk kkkk kkkk
+		k := (uint32(b[1] & 0x0f) << 8 | uint32(b[0]))
+		i := Instr{label: m.label, family: m.family}
 		if ((k & 0x800) >> 11) == 1 {
-			op := -b2i16little(b)
-			nk := (op & 0x0fff) << 1
-			fmt.Printf("%.4x\trjmp\t.-%d\n", b2u16big(b), nk)
-			// XXX TODO FIX ME
-			//i.kaddress = nk
+			i.kaddress = int16((k + 0xf000) << 1)
 		} else {
-			fmt.Printf("%.4x\trjmp\t.+%d\n", b2u16big(b), k)
-			//i.kaddress = k
+			i.kaddress = int16(k << 1)
 		}
+		fmt.Printf("%.4x\trjmp\t.+%d\n", b2u16big(b), i.address)
 		fmt.Println(i)
 	case INSN_LDI:
 		K1 := b[1] & 0x0f
@@ -72,14 +68,15 @@ func dissAssemble(b []byte) {
 		fmt.Printf("%.4x\tldi\tr%d, 0x%.2x\t\t;%d\n", b2u16big(b), Rd, KKKK, Rd)
 	case INSN_RCALL:
 		// 1101 kkkk kkkk kkkk
-		k := (b2u16little(b) & 0x0fff) << 1
-		if k&0x0400 == 0 { //?yes?no?maybe?
-			fmt.Printf("%.4x\trcall\t.+%d\n", b2u16big(b), k)
+		k := (uint32(b[1] & 0x0f) << 8 | uint32(b[0]))
+		i := Instr{label: m.label, family: m.family}
+		if ((k & 0x0800) >> 11) == 1 { 
+			i.kaddress = int16((k + 0xf000) << 1)
 		} else {
-			i := -b2i16little(b)
-			nk := (i & 0x0fff) << 1
-			fmt.Printf("%.4x\trcall\t.-%d\n", b2u16big(b), nk)
+			i.kaddress = int16(k << 1)
 		}
+		fmt.Printf("%.4x\trcall\t.%d\n", b2u16big(b), i.kaddress)
+		fmt.Println(i)
 	case INSN_SBI:
 		AAAA := b[0] >> 3
 		bbb := b[0] & 0x7
@@ -405,7 +402,7 @@ func lookUp(raw []byte) OpCode {
 			}
 			return op
 		} else {
-			op = OpCode{mnemonic: "Unknown", value: b}
+			op = OpCode{mnemonic: "unknown", value: b}
 		}
 	}
 	return op
