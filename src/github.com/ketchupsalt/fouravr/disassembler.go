@@ -11,34 +11,31 @@ func dissAssemble(b []byte) {
 
 	case INSN_NOP:
 		fmt.Printf("%.4x\tnop\n", b2u16big(b))
-		i := Instr{label: m.label, family: m.family}
-		fmt.Println(i)
+		//i := Instr{label: m.label, family: m.family}
+		//fmt.Println(i)
 	case INSN_ADC:
 		// 0001 11rd dddd rrrr
 		Rr := (((b[1]&0x02)>>1)<<4 | (b[0] & 0x0f))
 		Rd := ((b[1]&0x01)<<4 | ((b[0] & 0xf0) >> 4))
-		fmt.Printf("%.4x\tadc\tr%d, r%d\n", b2u16big(b), Rd, Rr)
 		i := Instr{label: m.label, family: m.family, source: Rr, dest: Rd}
-		fmt.Println(i)
+		fmt.Printf("%.4x\tadc\tr%d, r%d\n", b2u16big(b), i.dest, i.source)
 	case INSN_EOR:
 		Rr := (((b[1]&0x02)>>1)<<4 | (b[0] & 0x0f))
 		Rd := ((b[1]&0x01)<<4 | ((b[0] & 0xf0) >> 4))
-		fmt.Printf("%.4x\teor\tr%d, r%d\n", b2u16big(b), Rr, Rd)
 		i := Instr{label: m.label, source: Rr, dest: Rd, family: m.family}
-		fmt.Println(i)
+		fmt.Printf("%.4x\teor\tr%d, r%d\n", b2u16big(b), i.source, i.dest)
 	case INSN_OUT:
 		//out := (b[1] >> 3) & 0xff
 		AA1 := (b[1] & 0x06) >> 1
 		AA2 := b[0] & 0x0f
 		address := AA1<<4 | AA2
 		Rr := ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
-		fmt.Printf("%.4x\tout\t0x%.2x, r%d\t\t;%d\n", b2u16big(b), address, Rr, address)
 		i := Instr{label: m.label, family: m.family, ioaddr: address, source: Rr}
-		fmt.Println(i)
+		fmt.Printf("%.4x\tout\t0x%.2x, r%d\t\t;%d\n", b2u16big(b), i.ioaddr, i.source, i.ioaddr)
 	case INSN_CLI:
 		fmt.Printf("%.4x\tcli\n", b2u16big(b))
-		i := Instr{label: m.label, family: m.family}
-		fmt.Println(i)
+		//i := Instr{label: m.label, family: m.family}
+		//fmt.Println(i)
 	case INSN_JMP:
 		// 1001 010k kkkk 110k kkkk kkkk kkkk kkkk
 		// XXX ToDo(erin): THIS HAS NOT BEEN TESTED
@@ -51,15 +48,14 @@ func dissAssemble(b []byte) {
 		fmt.Println(i)
 	case INSN_RJMP:
 		// 1100 kkkk kkkk kkkk
-		k := (uint32(b[1] & 0x0f) << 8 | uint32(b[0]))
+		k := (uint32(b[1]&0x0f)<<8 | uint32(b[0]))
 		i := Instr{label: m.label, family: m.family}
 		if ((k & 0x800) >> 11) == 1 {
 			i.kaddress = int16((k + 0xf000) << 1)
 		} else {
 			i.kaddress = int16(k << 1)
 		}
-		fmt.Printf("%.4x\trjmp\t.+%d\n", b2u16big(b), i.address)
-		fmt.Println(i)
+		fmt.Printf("%.4x\trjmp\t.+%d\n", b2u16big(b), i.kaddress)
 	case INSN_LDI:
 		K1 := b[1] & 0x0f
 		K2 := b[0] & 0x0f
@@ -68,9 +64,9 @@ func dissAssemble(b []byte) {
 		fmt.Printf("%.4x\tldi\tr%d, 0x%.2x\t\t;%d\n", b2u16big(b), Rd, KKKK, Rd)
 	case INSN_RCALL:
 		// 1101 kkkk kkkk kkkk
-		k := (uint32(b[1] & 0x0f) << 8 | uint32(b[0]))
+		k := (uint32(b[1]&0x0f)<<8 | uint32(b[0]))
 		i := Instr{label: m.label, family: m.family}
-		if ((k & 0x0800) >> 11) == 1 { 
+		if ((k & 0x0800) >> 11) == 1 {
 			i.kaddress = int16((k + 0xf000) << 1)
 		} else {
 			i.kaddress = int16(k << 1)
@@ -120,57 +116,71 @@ func dissAssemble(b []byte) {
 	case INSN_BRCC:
 		//1111 01kk kkkk k000
 		// 64 ≤ k ≤ +63
-		k := ((b[1] & 0x03) << 5) | ((b[0]&0xf8)>>3)<<1
-		fmt.Printf("%.4x\tbrcc\t.+%d\n", b2u16big(b), k)
+		k := (b2u16little(b) & 0x03f8) >> 3
+		i := Instr{label: m.label, family: m.family}
+		if ((k & 0x40) >> 6) == 1 {
+			i.kaddress = int16((k + 0xff80) << 1)
+		} else {
+			i.kaddress = int16(k << 1)
+		}
+		fmt.Printf("%.4x\tbrcc\t.+%d\n", b2u16big(b), i.kaddress)
 	case INSN_BRCS:
 		// Supposed to be -64<k<+63, but avr-objdump doesn't display
 		// these values this way.
 		// 1111 00kk kkkk k000
-		k := (((b[1] & 0x03) << 5) | ((b[0] & 0xf8) >> 3)) << 1
-		fmt.Printf("%.4x\tbrcs\t.+%d\n", b2u16big(b), k)
+		k := (b2u16little(b) & 0x03f8) >> 3
+		i := Instr{label: m.label, family: m.family}
+		if ((k & 0x40) >> 6) == 1 {
+			i.kaddress = int16((k + 0xff80) << 1)
+		} else {
+			i.kaddress = int16(k << 1)
+		}
+		fmt.Printf("%.4x\tbrcs\t.+%d\n", b2u16big(b), i.kaddress)
 	case INSN_BREQ:
 		// Supposed to be -64<k<+63, but avr-objdump doesn't display
 		// these values this way.
 		// 1111 00kk kkkk k001
-		k := (((b[1] & 0x03) << 5) | ((b[0] & 0xf8) >> 3)) << 1
-		fmt.Printf("%.4x\tbreq\t.%d\n", b2u16big(b), k)
+		k := (b2u16little(b) & 0x03f8) >> 3
+		i := Instr{label: m.label, family: m.family}
+		if ((k & 0x40) >> 6) == 1 {
+			i.kaddress = int16((k + 0xff80) << 1)
+		} else {
+			i.kaddress = int16(k << 1)
+		}
+		fmt.Printf("%.4x\tbreq\t.%d\n", b2u16big(b), i.kaddress)
 	case INSN_BRGE:
 		// 1111 01kk kkkk k100
-		k1 := ((b[1] & 0x03) << 5)
-		k2 := ((b[0] & 0xf8) >> 3) << 1
-		// XXX TODO(erin) -- this might need to be << 1 -- haven't found a positive one yet.
-		k := k1 | k2
-		if k <= 64 {
-			fmt.Printf("%.4x\tbrge\t.%d\n", b2u16big(b), k)
+		k := (b2u16little(b) & 0x03f8) >> 3
+		i := Instr{label: m.label, family: m.family}
+		if ((k & 0x40) >> 6) == 1 {
+			i.kaddress = int16((k + 0xff80) << 1)
 		} else {
-			i := -b2i16little(b)
-			nk := (((i & 0x03f8) >> 3) + 1) << 1
-			fmt.Printf("%.4x\tbrge\t.-%d\n", b2u16big(b), nk)
+			i.kaddress = int16(k << 1)
 		}
+		fmt.Printf("%.4x\tbrge\t.%d\n", b2u16big(b), i.kaddress)
 	case INSN_BRNE:
-		k := (b2u16little(b) & 0x03f8) >> 2
+		// 1111 01kk kkkk k001
+		k := (b2u16little(b) & 0x03f8) >> 3
 		// check to see if msb of k is 1
 		// if it is, the result is negative.
-		if ((b2u16little(b) & 0x0200) >> 9) == 1 {
-			nk := ^(k) & 0x00ff
-			nk += 1
-			fmt.Printf("%.4x\tbrne\t.-%d\n", b2u16big(b), nk)
+		i := Instr{label: m.label, family: m.family}
+		if ((k & 0x40) >> 6) == 1 {
+			i.kaddress = int16((k + 0xff80) << 1)
 		} else {
-			fmt.Printf("%.4x\tbrne\t.+%d\n", b2u16big(b), k)
+			i.kaddress = int16(k << 1)
 		}
+		fmt.Printf("%.4x\tbrne\t.+%d\n", b2u16big(b), i.kaddress)
+		fmt.Println(i)
 	case INSN_BRTC:
 		// 1111 01kk kkkk k110
-		k1 := ((b[1] & 0x03) << 5)
-		k2 := ((b[0] & 0xf8) >> 3) << 1
-		// XXX TODO(erin) -- this might need to be << 1 -- haven't found a positive one yet.
-		k := k1 | k2
-		if k <= 64 {
-			fmt.Printf("%.4x\tbrtc\t.+%d\n", b2u16big(b), k)
+		k := (b2u16little(b) & 0x03f8) >> 3
+		i := Instr{label: m.label, family: m.family}
+		if ((k & 0x40) >> 6) == 1 {
+			i.kaddress = int16((k + 0xff80) << 1)
 		} else {
-			i := -b2i16little(b)
-			nk := (((i & 0x03f8) >> 3) + 1) << 1
-			fmt.Printf("%.4x\tbrtc\t.-%d\n", b2u16big(b), nk)
+			i.kaddress = int16(k << 1)
 		}
+		fmt.Printf("%.4x\tbrtc\t.+%d\n", b2u16big(b), i.kaddress)
 	case INSN_BST:
 		// 1111 101d dddd 0bbb
 		Rd := ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
