@@ -170,7 +170,7 @@ type Instr struct {
 	ioaddr       byte
 	iar          map[string]uint16
 	displacement uint16
-	registerBit  uint16
+	registerBit  byte
 	statusBit    uint16
 }
 
