@@ -3,7 +3,7 @@ package main
 import (
 	"debug/elf"
 	"flag"
-	"fmt"
+//	"fmt"
 )
 
 var fileName string
@@ -26,8 +26,15 @@ func main() {
 	file, _ := elf.Open(fileName)
 	getExecutableStuff(file)
 
+	mi := dissAssemble(pop(2))
+	cpu := CPU{}
+	cpu.Execute(mi)
+	
+/*
 	for len(data) > 0 {
 		fmt.Printf(".text:%.4x:\t", (pc))
-		dissAssemble(pop(2))
+		f := dissAssemble(pop(2))
+		fmt.Println(f)
 	}
+*/
 }
