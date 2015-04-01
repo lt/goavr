@@ -111,7 +111,7 @@ func dissAssemble(b []byte) Instr {
 		return inst
 	case INSN_LDS:
 		inst.dest = ((b[1]&0x01)<<4 | ((b[0] & 0xf0) >> 4))
-		c := pop(2)
+		c := cpu.memory.Fetch(2)
 		inst.k32 = b2u32little(c)
 		//fmt.Printf("%.4x\tlds\tr%d, 0x%.4x\n", b2u16big(b), inst.dest, inst.k16)
 		return inst
@@ -120,7 +120,6 @@ func dissAssemble(b []byte) Instr {
 		var k1, k2, k3 uint32
 		k1 = uint32(b[1] & 0x01)<< 20
 		k2 = uint32(b[0] & 0xf0)<< 12
-		//c := pop(2)
 		c := cpu.memory.Fetch(2)
 		k3 = uint32(c[1]) << 8 | uint32(c[0])
 		inst.k32 = k1 | k2 | k3
@@ -163,7 +162,7 @@ func dissAssemble(b []byte) Instr {
 		//0111 KKKK dddd KKKK
 		inst.kdata = ((b[1] & 0x0f) << 4) | (b[0] & 0x0f)
 		inst.dest = ((b[0] & 0xf0) >> 4) + 0x10
-		fmt.Printf("%.4x\tandi\tr%d, 0x%.2x\n", b2u16big(b), inst.dest, inst.kdata)
+		//fmt.Printf("%.4x\tandi\tr%d, 0x%.2x\n", b2u16big(b), inst.dest, inst.kdata)
 		return inst
 	case INSN_BRCC:
 		//1111 01kk kkkk k000

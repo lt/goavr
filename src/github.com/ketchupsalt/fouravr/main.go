@@ -40,12 +40,12 @@ func main() {
 
 	cpu.pc = 0
 	
-	for x := 0; x < 100; x++ {
-		//fmt.Println("Before: ", cpu.regs)
+	for x := 0; x < 500; x++ {
+		fmt.Printf("Before:\t%v\n", cpu.regs)
 		mi := cpu.memory.Fetch(2)
-		fmt.Println(dissAssemble(mi))
+		//fmt.Println(dissAssemble(mi))
 		cpu.Execute(dissAssemble(mi))
-		//fmt.Println("After: ", cpu.regs)
+		fmt.Printf("After:\t%v\n", cpu.regs)
 	}
 
 }

@@ -175,6 +175,8 @@ type Instr struct {
 	statusBit    uint16
 }
 
+type Program []Instr
+
 // Return a parsed opcode from a byte. Not used (yet)
 func parseOpCode(b []byte) OpCode {
 	o := OpCode{}

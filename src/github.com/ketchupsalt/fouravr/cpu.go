@@ -15,13 +15,13 @@ type CPU struct {
 type Memory [0x045f]byte
 
 func printMnemonic(label int) {
-	for _, op := range OpCodeLookUpTable {
+	ret := fmt.Sprintf("I am %d\n", label)
+	for _, op := range(OpCodeLookUpTable) {
 		if op.label == label {
-			fmt.Println(op.mnemonic)
-		} else {
-			fmt.Println("I am ", label)
+			ret = op.mnemonic
 		}
 	}
+	fmt.Println(ret)
 }
 
 func (cpu *CPU) Execute(i Instr) {
@@ -35,7 +35,8 @@ func (cpu *CPU) Execute(i Instr) {
 	case INSN_RJMP:
 		// PC <- PC + k + 1
 		printMnemonic(i.label)
-		cpu.pc = cpu.pc + i.k16 + 1
+		//cpu.pc = cpu.pc + i.k16 + 1
+		//fmt.Println(i.k16)
 		return
 	case INSN_ADD:
 		// Rd <- Rd + Rr
@@ -63,6 +64,8 @@ func (cpu *CPU) Execute(i Instr) {
 		printMnemonic(i.label)
 		return
 	case INSN_LDI:
+		// Rd <- K
+		cpu.regs[i.dest] = i.kdata
 		printMnemonic(i.label)
 		return
 	case INSN_RCALL:
@@ -250,7 +253,6 @@ func (cpu *CPU) Execute(i Instr) {
 func (mem *Memory) Fetch(i int16) []byte {
 	ret := mem[cpu.pc:(cpu.pc+i)]
 	cpu.pc += i
-	fmt.Println(cpu.pc)
 	return ret
 }
 
