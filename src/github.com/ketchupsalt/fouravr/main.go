@@ -30,6 +30,7 @@ func main() {
 	} else {
 		file, _ := elf.Open(fileName)
 		getExecutableStuff(file)
+		fmt.Println(len(data))
 		cpu.memory.LoadProgram(data)
 	}
 
@@ -39,8 +40,15 @@ func main() {
 	//mi := Instr{label: INSN_JMP, family: Branches, }
 
 	cpu.pc = 0
+
+	// I made the CLI instruction set the status register to 7
+	// which is the global interrupt enable. This ends the
+	// program, for now, even though there's an rjmp that jumps
+	// back to it before exiting.
+
+	// XXXX TODO(Erin) find out how this works.
 	
-	for x := 0; x < 500; x++ {
+	for cpu.sr != 7 {
 		fmt.Printf("Before:\t%v\n", cpu.regs)
 		mi := cpu.memory.Fetch(2)
 		//fmt.Println(dissAssemble(mi))

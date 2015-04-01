@@ -12,7 +12,9 @@ type CPU struct {
 	memory Memory
 }
 
-type Memory [0x045f]byte
+// Actual AVR is 1024 bytes, but my test program is 1800ish.
+
+type Memory [2048]byte
 
 func printMnemonic(label int) {
 	ret := fmt.Sprintf("I am %d\n", label)
@@ -52,6 +54,7 @@ func (cpu *CPU) Execute(i Instr) {
 		printMnemonic(i.label)
 		return
 	case INSN_CLI:
+		cpu.sr = 7
 		printMnemonic(i.label)
 		return
 	case INSN_ADC:
@@ -257,7 +260,7 @@ func (mem *Memory) Fetch(i int16) []byte {
 }
 
 func (mem *Memory) LoadProgram(data []byte) {
-	for i, b := range(data[0:1000]) {
+	for i, b := range(data) {
 		mem[i] = b
 	}
 }
