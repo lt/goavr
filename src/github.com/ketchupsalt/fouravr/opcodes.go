@@ -166,7 +166,8 @@ type Instr struct {
 	source       byte
 	result       byte
 	kdata        byte
-	kaddress     int16
+	k16          int16
+	k32          uint32
 	ioaddr       byte
 	iar          map[string]uint16
 	displacement uint16
@@ -683,5 +684,19 @@ var OpCodeLookUpTable = []OpCode{
 		value:    0x9200,
 		family:   Transfers,
 		label:    INSN_STS,
+	},
+	OpCode{
+		mnemonic: "jmp",
+		mask: 0xfe0e,
+		value: 0x940c,
+		family: Branches,
+		label: INSN_JMP,
+	},
+	OpCode{
+		mnemonic: "call",
+		mask: 0xfe0e,
+		value: 0x940e,
+		family: Branches,
+		label: INSN_CALL,
 	},
 }

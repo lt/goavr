@@ -1,8 +1,8 @@
 package main
 
-//import (
-//	"fmt"
-//)
+import (
+	"fmt"
+)
 
 func dissAssemble(b []byte) Instr {
 	m := lookUp(b)
@@ -37,11 +37,11 @@ func dissAssemble(b []byte) Instr {
 		// 1100 kkkk kkkk kkkk
 		k := (uint32(b[1]&0x0f)<<8 | uint32(b[0]))
 		if ((k & 0x800) >> 11) == 1 {
-			inst.kaddress = int16((k + 0xf000) << 1)
+			inst.k16 = int16((k + 0xf000) << 1)
 		} else {
-			inst.kaddress = int16(k << 1)
+			inst.k16 = int16(k << 1)
 		}
-		//fmt.Printf("%.4x\trjmp\t.+%d\n", b2u16big(b), inst.kaddress)
+		//fmt.Printf("%.4x\trjmp\t.+%d\n", b2u16big(b), inst.k16)
 		return inst
 	case INSN_LDI:
 		// 1110 KKKK dddd KKKK
@@ -53,11 +53,11 @@ func dissAssemble(b []byte) Instr {
 		// 1101 kkkk kkkk kkkk
 		k := (uint32(b[1]&0x0f)<<8 | uint32(b[0]))
 		if ((k & 0x0800) >> 11) == 1 {
-			inst.kaddress = int16((k + 0xf000) << 1)
-			//fmt.Printf("%.4x\trcall\t+.%d\n", b2u16big(b), inst.kaddress)
+			inst.k16 = int16((k + 0xf000) << 1)
+			//fmt.Printf("%.4x\trcall\t+.%d\n", b2u16big(b), inst.k16)
 		} else {
-			inst.kaddress = int16(k << 1)
-			//fmt.Printf("%.4x\trcall\t.%d\n", b2u16big(b), inst.kaddress)
+			inst.k16 = int16(k << 1)
+			//fmt.Printf("%.4x\trcall\t.%d\n", b2u16big(b), inst.k16)
 		}
 		return inst
 	case INSN_SBI:
@@ -106,23 +106,24 @@ func dissAssemble(b []byte) Instr {
 		// 1001 001d dddd 0000 kkkk kkkk kkkk kkkk
 		inst.dest = ((b[1]&0x01)<<4 | ((b[0] & 0xf0) >> 4))
 		c := pop(2)
-		inst.kaddress = b2i16little(c)
-		//fmt.Printf("%.4x\tsts\t0x%.4x, r%d\n", b2u16big(b), inst.kaddress, inst.dest)
+		inst.k32 = b2u32little(c)
+		//fmt.Printf("%.4x\tsts\t0x%.4x, r%d\n", b2u16big(b), inst.k16, inst.dest)
 		return inst
 	case INSN_LDS:
 		inst.dest = ((b[1]&0x01)<<4 | ((b[0] & 0xf0) >> 4))
 		c := pop(2)
-		inst.kaddress = b2i16little(c)
-		//fmt.Printf("%.4x\tlds\tr%d, 0x%.4x\n", b2u16big(b), inst.dest, inst.kaddress)
+		inst.k32 = b2u32little(c)
+		//fmt.Printf("%.4x\tlds\tr%d, 0x%.4x\n", b2u16big(b), inst.dest, inst.k16)
 		return inst
 	case INSN_JMP:
 		// 1001 010k kkkk 110k kkkk kkkk kkkk kkkk
-		// XXX ToDo(erin): THIS HAS NOT BEEN TESTED
-		//k1 := int32((b[1] & 0x01) << 21)
-		//k2 := int32((b[0] & 0xf0) >> 3) | ((b[1] & 0x01) << 3)
-		//c := pop(2)
-		//inst.kaddress = k1 | k2 | b2u32little(c)
-		//fmt.Printf("%.4x\tlds\t0x%.4x\t;%d\n", b2u16big(b), b2u16little(c), k)
+		var k1, k2, k3 uint32
+		k1 = uint32(b[1] & 0x01)<< 20
+		k2 = uint32(b[0] & 0xf0)<< 12
+		c := pop(2)
+		k3 = uint32(c[1]) << 8 | uint32(c[0])
+		inst.k32 = k1 | k2 | k3
+		fmt.Printf("%.4x\tjmp\t0x%.8x\t;%d\n", b2u16big(b), inst.k32, inst.k32)
 		return inst
 	case INSN_ADD:
 		// 0000 11rd dddd rrrr
@@ -168,11 +169,11 @@ func dissAssemble(b []byte) Instr {
 		// 64 ≤ k ≤ +63
 		k := (b2u16little(b) & 0x03f8) >> 3
 		if ((k & 0x40) >> 6) == 1 {
-			inst.kaddress = int16((k + 0xff80) << 1)
+			inst.k16 = int16((k + 0xff80) << 1)
 		} else {
-			inst.kaddress = int16(k << 1)
+			inst.k16 = int16(k << 1)
 		}
-		//fmt.Printf("%.4x\tbrcc\t.+%d\n", b2u16big(b), inst.kaddress)
+		//fmt.Printf("%.4x\tbrcc\t.+%d\n", b2u16big(b), inst.k16)
 		return inst
 	case INSN_BRCS:
 		// Supposed to be -64<k<+63, but avr-objdump doesn't display
@@ -180,11 +181,11 @@ func dissAssemble(b []byte) Instr {
 		// 1111 00kk kkkk k000
 		k := (b2u16little(b) & 0x03f8) >> 3
 		if ((k & 0x40) >> 6) == 1 {
-			inst.kaddress = int16((k + 0xff80) << 1)
+			inst.k16 = int16((k + 0xff80) << 1)
 		} else {
-			inst.kaddress = int16(k << 1)
+			inst.k16 = int16(k << 1)
 		}
-		//fmt.Printf("%.4x\tbrcs\t.+%d\n", b2u16big(b), inst.kaddress)
+		//fmt.Printf("%.4x\tbrcs\t.+%d\n", b2u16big(b), inst.k16)
 		return inst
 	case INSN_BREQ:
 		// Supposed to be -64<k<+63, but avr-objdump doesn't display
@@ -192,21 +193,21 @@ func dissAssemble(b []byte) Instr {
 		// 1111 00kk kkkk k001
 		k := (b2u16little(b) & 0x03f8) >> 3
 		if ((k & 0x40) >> 6) == 1 {
-			inst.kaddress = int16((k + 0xff80) << 1)
+			inst.k16 = int16((k + 0xff80) << 1)
 		} else {
-			inst.kaddress = int16(k << 1)
+			inst.k16 = int16(k << 1)
 		}
-		//fmt.Printf("%.4x\tbreq\t.%d\n", b2u16big(b), inst.kaddress)
+		//fmt.Printf("%.4x\tbreq\t.%d\n", b2u16big(b), inst.k16)
 		return inst
 	case INSN_BRGE:
 		// 1111 01kk kkkk k100
 		k := (b2u16little(b) & 0x03f8) >> 3
 		if ((k & 0x40) >> 6) == 1 {
-			inst.kaddress = int16((k + 0xff80) << 1)
+			inst.k16 = int16((k + 0xff80) << 1)
 		} else {
-			inst.kaddress = int16(k << 1)
+			inst.k16 = int16(k << 1)
 		}
-		//fmt.Printf("%.4x\tbrge\t.%d\n", b2u16big(b), inst.kaddress)
+		//fmt.Printf("%.4x\tbrge\t.%d\n", b2u16big(b), inst.k16)
 		return inst
 	case INSN_BRNE:
 		// 1111 01kk kkkk k001
@@ -214,21 +215,21 @@ func dissAssemble(b []byte) Instr {
 		// check to see if msb of k is 1
 		// if it is, the result is negative.
 		if ((k & 0x40) >> 6) == 1 {
-			inst.kaddress = int16((k + 0xff80) << 1)
+			inst.k16 = int16((k + 0xff80) << 1)
 		} else {
-			inst.kaddress = int16(k << 1)
+			inst.k16 = int16(k << 1)
 		}
-		//fmt.Printf("%.4x\tbrne\t.+%d\n", b2u16big(b), inst.kaddress)
+		//fmt.Printf("%.4x\tbrne\t.+%d\n", b2u16big(b), inst.k16)
 		return inst
 	case INSN_BRTC:
 		// 1111 01kk kkkk k110
 		k := (b2u16little(b) & 0x03f8) >> 3
 		if ((k & 0x40) >> 6) == 1 {
-			inst.kaddress = int16((k + 0xff80) << 1)
+			inst.k16 = int16((k + 0xff80) << 1)
 		} else {
-			inst.kaddress = int16(k << 1)
+			inst.k16 = int16(k << 1)
 		}
-		//fmt.Printf("%.4x\tbrtc\t.+%d\n", b2u16big(b), inst.kaddress)
+		//fmt.Printf("%.4x\tbrtc\t.+%d\n", b2u16big(b), inst.k16)
 		return inst
 	case INSN_COM:
 		// 1001 010d dddd 0000
