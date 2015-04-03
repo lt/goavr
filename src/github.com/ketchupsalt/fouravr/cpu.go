@@ -4,30 +4,61 @@ import (
 	"fmt"
 )
 
+// AVR indirect pointer registers.
+// X = (26,27), Y = (28,29, and Z = (30,31)
+// XXX TODO(Erin) may be a better way to do this?
+// Like maybe make it part of the CPU struct?
+
+const (
+	XReg = 26
+	YReg = 28
+	Zreg = 30
+)
+
 type CPU struct {
 	regs [32]uint8
 	pc   int16
-	sp   uint16
-	sr   uint8
-	memory Memory
+	sp   int16
+	sr   int16
+	imem Memory
+	dmem Memory
 }
 
-// Actual AVR is 1024 bytes, but my test program is 1800ish.
+// Set bits in status register
+func (cpu *CPU) set_i() { cpu.sr |= 128 }
+func (cpu *CPU) set_t() { cpu.sr |= 64 }
+func (cpu *CPU) set_h() { cpu.sr |= 32 }
+func (cpu *CPU) set_s() { cpu.sr |= 16 }
+func (cpu *CPU) set_v() { cpu.sr |= 8 }
+func (cpu *CPU) set_n() { cpu.sr |= 4 }
+func (cpu *CPU) set_z() { cpu.sr |= 2 }
+func (cpu *CPU) set_c() { cpu.sr |= 1 }
 
-type Memory [2048]byte
+// Clear bits in status regsiter
+func (cpu *CPU) clear_i() { cpu.sr &= ^128 }
+func (cpu *CPU) clear_t() { cpu.sr &= ^64 }
+func (cpu *CPU) clear_h() { cpu.sr &= ^32 }
+func (cpu *CPU) clear_s() { cpu.sr &= ^16 }
+func (cpu *CPU) clear_v() { cpu.sr &= ^8 }
+func (cpu *CPU) clear_n() { cpu.sr &= ^4 }
+func (cpu *CPU) clear_z() { cpu.sr &= ^2 }
+func (cpu *CPU) clear_c() { cpu.sr &= ^1 }
 
-func printMnemonic(label int) {
-	ret := fmt.Sprintf("I am %d\n", label)
-	for _, op := range(OpCodeLookUpTable) {
-		if op.label == label {
-			ret = op.mnemonic
-		}
-	}
-	fmt.Println(ret)
-}
+/*
+Golang Logical Operators: (because I'm tired of looking this shit up)
++    ADD
+-    SUB
+&    bitwise AND
+|    bitwise OR
+^    bitwise XOR
+&^   bit clear (AND NOT)
+
+<<   left shift
+>>   right shift
+*/
 
 func (cpu *CPU) Execute(i Instr) {
-	fmt.Printf("%.4x:\t", cpu.pc)
+	fmt.Printf("pc: %.4x\tsr: %.8b\tsp: %.4x\t\n", cpu.pc, cpu.sr, cpu.sp)
 	switch i.label {
 	case INSN_JMP:
 		// we all know this doesn't work because
@@ -36,231 +67,259 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_RJMP:
 		// PC <- PC + k + 1
-		printMnemonic(i.label)
-		//cpu.pc = cpu.pc + i.k16 + 1
-		//fmt.Println(i.k16)
+		cpu.pc = cpu.pc + i.k16
 		return
 	case INSN_ADD:
 		// Rd <- Rd + Rr
-		printMnemonic(i.label)
 		cpu.regs[i.dest] = cpu.regs[i.dest] + cpu.regs[i.source]
 		return
 	case INSN_ANDI:
 		// Rd <- Rd & K
-		printMnemonic(i.label)
 		cpu.regs[i.dest] = cpu.regs[i.dest] & i.kdata
 		return
 	case INSN_NOP:
-		printMnemonic(i.label)
 		return
 	case INSN_CLI:
 		cpu.sr = 7
-		printMnemonic(i.label)
 		return
 	case INSN_ADC:
-		printMnemonic(i.label)
+		// Rd <- Rd + Rr + C
+		c := uint8(cpu.sr & 0x01)
+		cpu.regs[i.dest] = cpu.regs[i.dest] + cpu.regs[i.source] + c
 		return
 	case INSN_EOR:
-		printMnemonic(i.label)
+		// Rd <- Rd^Rr
+		cpu.regs[i.dest] = cpu.regs[i.dest] ^ cpu.regs[i.source]
 		return
 	case INSN_OUT:
-		printMnemonic(i.label)
+		// I/O port <- Rr
 		return
 	case INSN_LDI:
 		// Rd <- K
 		cpu.regs[i.dest] = i.kdata
-		printMnemonic(i.label)
 		return
 	case INSN_RCALL:
-		printMnemonic(i.label)
+		// PC <- PC + k + 1
+		// says +1, but that generates the wrong value.
+		cpu.pc = cpu.pc + i.k16 // + 1
 		return
 	case INSN_SBI:
-		printMnemonic(i.label)
+
 		return
 	case INSN_CBI:
-		printMnemonic(i.label)
+
 		return
 	case INSN_SBIC:
-		printMnemonic(i.label)
+
 		return
 	case INSN_SBIS:
-		printMnemonic(i.label)
+
 		return
 	case INSN_BLD:
-		printMnemonic(i.label)
+
 		return
 	case INSN_BST:
-		printMnemonic(i.label)
+
 		return
 	case INSN_SBRC:
-		printMnemonic(i.label)
+
 		return
 	case INSN_STS:
-		printMnemonic(i.label)
+
 		return
 	case INSN_LDS:
-		printMnemonic(i.label)
+
 		return
 	case INSN_ADIW:
-		printMnemonic(i.label)
+
 		return
 	case INSN_SBIW:
-		printMnemonic(i.label)
+
 		return
 	case INSN_BRCC:
-		printMnemonic(i.label)
+
 		return
 	case INSN_BRCS:
-		printMnemonic(i.label)
+
 		return
 	case INSN_BREQ:
-		printMnemonic(i.label)
+
 		return
 	case INSN_BRGE:
-		printMnemonic(i.label)
+
 		return
 	case INSN_BRNE:
-		printMnemonic(i.label)
+		// if (Z = 0) then PC <-  PC + k + 1
+		if (cpu.sr & 0x02) == 0 {
+			cpu.pc += i.k16
+		}
 		return
 	case INSN_BRTC:
-		printMnemonic(i.label)
+
 		return
 	case INSN_COM:
-		printMnemonic(i.label)
+		// Rd <- ^Rd
+		cpu.regs[i.dest] = ^cpu.regs[i.dest]
 		return
 	case INSN_CP:
-		printMnemonic(i.label)
+
 		return
 	case INSN_CPC:
-		printMnemonic(i.label)
+		// Rd - Rr - C
+		c := byte(cpu.sr & 0x01)
+		r := cpu.regs[i.dest] - cpu.regs[i.source] - c
+		if r != 0 {
+			cpu.clear_z()
+		}
+		if (cpu.regs[i.source] + c) > cpu.regs[i.dest] {
+			cpu.clear_c()
+		} else {
+			cpu.set_c()
+		}
 		return
 	case INSN_CPI:
-		printMnemonic(i.label)
+		// Rd - K
+		if (cpu.regs[i.dest] - i.kdata) == 0 {
+			cpu.set_z()
+		}
+		if i.kdata > cpu.regs[i.dest] {
+			cpu.set_c()
+		}
 		return
 	case INSN_CPSE:
-		printMnemonic(i.label)
+
 		return
 	case INSN_DEC:
-		printMnemonic(i.label)
+		// Rd <- Rd - 1
+		cpu.regs[i.dest] -= 1
 		return
 	case INSN_IN:
-		printMnemonic(i.label)
+
 		return
 	case INSN_LDDY:
-		printMnemonic(i.label)
+
 		return
 	case INSN_LDDZ:
-		printMnemonic(i.label)
+
 		return
 	case INSN_LDX:
-		printMnemonic(i.label)
+
 		return
 	case INSN_LDXP:
-		printMnemonic(i.label)
+
 		return
 	case INSN_LDY:
-		printMnemonic(i.label)
+
 		return
 	case INSN_LDZ:
-		printMnemonic(i.label)
+
 		return
 	case INSN_LPMZ:
-		printMnemonic(i.label)
+
+		return
+	case INSN_LPMZP:
+		// Rd <- (Z), Z <- Z + 1
+		z := (cpu.regs[31] << 8) | cpu.regs[30]
+		cpu.regs[i.dest] = cpu.imem[z]
+		cpu.regs[30] += 1
 		return
 	case INSN_LPM:
-		printMnemonic(i.label)
+
 		return
 	case INSN_LSR:
-		printMnemonic(i.label)
+
 		return
 	case INSN_MOV:
-		printMnemonic(i.label)
+		// Rd <- Rr
+		cpu.regs[i.dest] = cpu.regs[i.source]
 		return
 	case INSN_MOVW:
-		printMnemonic(i.label)
+		// Rd+1:Rd <- Rr+1:Rr
+		cpu.regs[i.dest+1] = cpu.regs[i.source+1]
+		cpu.regs[i.dest] = cpu.regs[i.source]
 		return
 	case INSN_MUL:
-		printMnemonic(i.label)
+
 		return
 	case INSN_NEG:
-		printMnemonic(i.label)
+
 		return
 	case INSN_OR:
-		printMnemonic(i.label)
+
 		return
 	case INSN_ORI:
-		printMnemonic(i.label)
+
 		return
 	case INSN_POP:
-		printMnemonic(i.label)
+
 		return
 	case INSN_PUSH:
-		printMnemonic(i.label)
+		// STACK <- Rr
+		cpu.sp -= 1
 		return
 	case INSN_RET:
-		printMnemonic(i.label)
+
 		return
 	case INSN_RETI:
-		printMnemonic(i.label)
+
 		return
 	case INSN_ROR:
-		printMnemonic(i.label)
+
 		return
 	case INSN_SBC:
-		printMnemonic(i.label)
-		return
-	case INSN_SBCI:
-		printMnemonic(i.label)
-		return
-	case INSN_SEI:
-		printMnemonic(i.label)
-		return
-	case INSN_STDY:
-		printMnemonic(i.label)
-		return
-	case INSN_STDZ:
-		printMnemonic(i.label)
-		return
-	case INSN_STX:
-		printMnemonic(i.label)
-		return
-	case INSN_STXP:
-		printMnemonic(i.label)
-		return
-	case INSN_STXM:
-		printMnemonic(i.label)
-		return
-	case INSN_STY:
-		printMnemonic(i.label)
-		return
-	case INSN_STZ:
-		printMnemonic(i.label)
-		return
-	case INSN_STZP:
-		printMnemonic(i.label)
-		return
-	case INSN_STZM:
-		printMnemonic(i.label)
-		return
-	case INSN_SUB:
-		printMnemonic(i.label)
+
 		return
 	case INSN_SUBI:
-		printMnemonic(i.label)
+		// Rd <- Rd - K
+		cpu.regs[i.dest] = cpu.regs[i.dest] - i.kdata
+
+		return
+	case INSN_SBCI:
+		// Rd <- Rd - K - C
+		c := cpu.sr & 0x01
+		cpu.regs[i.dest] = cpu.regs[i.dest] - i.kdata - uint8(c)
+		return
+	case INSN_SEI:
+
+		return
+	case INSN_STDY:
+
+		return
+	case INSN_STDZ:
+
+		return
+	case INSN_STX:
+
+		return
+	case INSN_STXP:
+		// (X) <- Rr, X <- X + 1
+		// 26 = low byte, 27 = high byte
+		x := int16(cpu.regs[27])<<8 | int16(cpu.regs[26])
+		fmt.Printf("dmem: %.4x\t", x)
+		cpu.dmem[x] = cpu.regs[i.source]
+		cpu.regs[26] += 1
+
+		return
+	case INSN_STXM:
+
+		return
+	case INSN_STY:
+
+		return
+	case INSN_STZ:
+
+		return
+	case INSN_STZP:
+
+		return
+	case INSN_STZM:
+
+		return
+	case INSN_SUB:
+		// Rd <- Rd - Rr
+		cpu.regs[i.dest] = cpu.regs[i.dest] - cpu.regs[i.source]
 		return
 	default:
 		fmt.Println("I dunno.")
-	}
-}
-
-func (mem *Memory) Fetch(i int16) []byte {
-	ret := mem[cpu.pc:(cpu.pc+i)]
-	cpu.pc += i
-	return ret
-}
-
-func (mem *Memory) LoadProgram(data []byte) {
-	for i, b := range(data) {
-		mem[i] = b
 	}
 }

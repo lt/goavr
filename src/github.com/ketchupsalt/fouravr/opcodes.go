@@ -87,6 +87,7 @@ const (
 	INSN_LDS
 	INSN_LPM
 	INSN_LPMZ
+	INSN_LPMZP
 	INSN_LSL
 	INSN_LSR
 	INSN_MOV
@@ -653,14 +654,21 @@ var OpCodeLookUpTable = []OpCode{
 		family:   Transfers,
 		label:    INSN_STZM,
 	},
-	// LPM Rd, Z+
 	// LPM Rd, Z
 	OpCode{
 		mnemonic: "lpmz",
-		mask:     0xfeff,
-		value:    0x9005,
+		mask:     0xfe0f,
+		value:    0x9004,
 		family:   Transfers,
 		label:    INSN_LPMZ,
+	},
+	// LPM Rd, Z+
+	OpCode{
+		mnemonic: "lpmz+",
+		mask:     0xfe0f,
+		value:    0x9005,
+		family:   Transfers,		
+		label:    INSN_LPMZP,
 	},
 	OpCode{
 		mnemonic: "lpm",
