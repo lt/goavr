@@ -39,7 +39,6 @@ func main() {
 	// 1001 0100 0000 1100 1011 1011 1100 0101
 	//mi := Instr{label: INSN_JMP, family: Branches, }
 
-
 	// Manually setting the program counter to the start of
 	// the stuff I actually want to step through.
 	cpu.pc = 0x0026
@@ -49,17 +48,14 @@ func main() {
 	// the stack pointer, but I can't yet figure out where,
 	// so I am setting this manually.
 	cpu.sp = 0x1ff
+
+	// Still don't know how to exit the program.
 	
-
-	// I made the CLI instruction set the status register to 7
-	// which is the global interrupt enable. This ends the
-	// program, for now, even though there's an rjmp that jumps
-	// back to it before exiting.
-
-	for cpu.sr != 7 {
+	for i := 0; i < 0x0712; i++  {
 		fmt.Println("")
 		mi := cpu.imem.Fetch()
 		cpu.Execute(dissAssemble(mi))
+		fmt.Printf("pc: %.4x\tsr: %.8b\tsp: %.4x\t\n", cpu.pc, cpu.sr, cpu.sp)
 		printRegs(cpu.regs)
 	}
 }

@@ -58,7 +58,6 @@ Golang Logical Operators: (because I'm tired of looking this shit up)
 */
 
 func (cpu *CPU) Execute(i Instr) {
-	fmt.Printf("pc: %.4x\tsr: %.8b\tsp: %.4x\t\n", cpu.pc, cpu.sr, cpu.sp)
 	switch i.label {
 	case INSN_JMP:
 		// we all know this doesn't work because
@@ -71,21 +70,45 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_ADD:
 		// Rd <- Rd + Rr
-		cpu.regs[i.dest] = cpu.regs[i.dest] + cpu.regs[i.source]
+		r := cpu.regs[i.dest] + cpu.regs[i.source]
+		cpu.regs[i.dest] = r
+		if r == 0 {
+			cpu.set_z()
+		} else {
+			cpu.clear_z()
+		}
+		if r > 0xff {
+			cpu.set_c()
+		} else {
+			cpu.clear_c()
+		}
 		return
 	case INSN_ANDI:
 		// Rd <- Rd & K
 		cpu.regs[i.dest] = cpu.regs[i.dest] & i.kdata
 		return
 	case INSN_NOP:
+		// Duh.
 		return
 	case INSN_CLI:
-		cpu.sr = 7
+		// Clear global interrupt
+		cpu.clear_i()
 		return
 	case INSN_ADC:
 		// Rd <- Rd + Rr + C
 		c := uint8(cpu.sr & 0x01)
-		cpu.regs[i.dest] = cpu.regs[i.dest] + cpu.regs[i.source] + c
+		r := cpu.regs[i.dest] + cpu.regs[i.source] + c
+		cpu.regs[i.dest] = r
+		if r == 0 {
+			cpu.set_z()
+		} else {
+			cpu.clear_z()
+		}
+		if r > 0xff {
+			cpu.set_c()
+		} else {
+			cpu.clear_c()
+		}
 		return
 	case INSN_EOR:
 		// Rd <- Rd^Rr
@@ -104,7 +127,10 @@ func (cpu *CPU) Execute(i Instr) {
 		cpu.pc = cpu.pc + i.k16 // + 1
 		return
 	case INSN_SBI:
-
+		// I/O(A,b) <- 1
+		fmt.Printf("%.8b\n", cpu.dmem[i.ioaddr])
+		cpu.dmem[i.ioaddr] &= i.registerBit
+		fmt.Printf("%.8b\n", cpu.dmem[i.ioaddr])
 		return
 	case INSN_CBI:
 
@@ -140,7 +166,11 @@ func (cpu *CPU) Execute(i Instr) {
 
 		return
 	case INSN_BRCS:
-
+		// Branch if carry set
+		c := cpu.sr & 0x01
+		if c == 1 {
+			cpu.pc = i.k16
+		} 
 		return
 	case INSN_BREQ:
 
@@ -162,28 +192,53 @@ func (cpu *CPU) Execute(i Instr) {
 		cpu.regs[i.dest] = ^cpu.regs[i.dest]
 		return
 	case INSN_CP:
-
+		// Rd - Rr
+		if cpu.regs[i.source] > cpu.regs[i.dest] {
+			cpu.set_c()
+		} else {
+			cpu.clear_c()
+		}
+		r := cpu.regs[i.dest] - cpu.regs[i.source]
+		if r == 0 {
+			cpu.set_z()
+		} else {
+			cpu.clear_z()
+		}
 		return
 	case INSN_CPC:
 		// Rd - Rr - C
-		c := byte(cpu.sr & 0x01)
+		c := uint8(cpu.sr & 0x01)
+		if (cpu.regs[i.source] + c) > cpu.regs[i.dest] {
+			cpu.set_c()
+		} else {
+			cpu.clear_c()
+		}
 		r := cpu.regs[i.dest] - cpu.regs[i.source] - c
 		if r != 0 {
 			cpu.clear_z()
 		}
-		if (cpu.regs[i.source] + c) > cpu.regs[i.dest] {
-			cpu.clear_c()
-		} else {
-			cpu.set_c()
-		}
 		return
 	case INSN_CPI:
 		// Rd - K
-		if (cpu.regs[i.dest] - i.kdata) == 0 {
-			cpu.set_z()
-		}
+		// I can't tell from the doc, but I think this check
+		// has to happen before K is subtracted. We'll see.
 		if i.kdata > cpu.regs[i.dest] {
 			cpu.set_c()
+		} else {
+			cpu.clear_c()
+		}
+		r := cpu.regs[i.dest] - i.kdata
+
+		if r == 0 {
+			cpu.set_z()
+		} else {
+			cpu.clear_z()
+		}
+
+		if ((r & 0x80) >> 7) == 1 {
+			cpu.set_n()
+		} else {
+			cpu.clear_n()
 		}
 		return
 	case INSN_CPSE:
@@ -191,7 +246,18 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_DEC:
 		// Rd <- Rd - 1
-		cpu.regs[i.dest] -= 1
+		r := cpu.regs[i.dest] - 1
+		cpu.regs[i.dest] = r
+		if r == 0 {
+			cpu.set_z()
+		} else {
+			cpu.clear_z()
+		}
+		if ((r & 0x80) >> 7) == 1 {
+			cpu.set_n()
+		} else {
+			cpu.clear_n()
+		}
 		return
 	case INSN_IN:
 
@@ -271,16 +337,36 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_SUBI:
 		// Rd <- Rd - K
-		cpu.regs[i.dest] = cpu.regs[i.dest] - i.kdata
-
+		r := cpu.regs[i.dest] - i.kdata
+		cpu.regs[i.dest] = r
+		if r != 0 {
+			cpu.set_z()
+		} else {
+			cpu.clear_z()
+		}
+		if i.kdata > r {
+			cpu.set_c()
+		} else {
+			cpu.clear_c()
+		}
 		return
 	case INSN_SBCI:
 		// Rd <- Rd - K - C
-		c := cpu.sr & 0x01
-		cpu.regs[i.dest] = cpu.regs[i.dest] - i.kdata - uint8(c)
+		c := uint8(cpu.sr & 0x01)
+		r := cpu.regs[i.dest] - i.kdata - c
+		cpu.regs[i.dest] = r
+		if r == 0 {
+			cpu.clear_z()
+		}
+		if (i.kdata + c) > r {
+			cpu.set_c()
+		} else {
+			cpu.clear_c()
+		}
 		return
 	case INSN_SEI:
-
+		// set global interrupt flag
+		cpu.set_i()
 		return
 	case INSN_STDY:
 
@@ -321,5 +407,6 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	default:
 		fmt.Println("I dunno.")
+		return
 	}
 }
