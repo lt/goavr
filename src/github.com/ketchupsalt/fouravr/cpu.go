@@ -244,16 +244,24 @@ func (cpu *CPU) Execute(i Instr) {
 		}
 		return
 	case INSN_BRGE:
-
+		// if Rd >= Rr then PC += k
+		if cpu.regs[i.dest] >= cpu.regs[i.source] {
+			cpu.pc += i.k16 //+1
+		}
 		return
 	case INSN_BRNE:
 		// if (Z = 0) then PC <-  PC + k + 1
-		if (cpu.sr & 0x02) == 0 {
-			cpu.pc += i.k16
+		z := (cpu.sr & 0x02) >> 1
+		if z == 0 {
+			cpu.pc += i.k16 //+1
 		}
 		return
 	case INSN_BRTC:
-
+		// if T = 0 then PC <- PC + k + 1
+		t := (cpu.sr & 64) >> 6
+		if t == 0 {
+			cpu.pc += i.k16 //+1
+		}
 		return
 	case INSN_COM:
 		// Rd <- ^Rd
@@ -310,7 +318,10 @@ func (cpu *CPU) Execute(i Instr) {
 		}
 		return
 	case INSN_CPSE:
-
+		// if Rd = Rr then PC <- PC + 2
+		if cpu.regs[i.dest] == cpu.regs[i.source] {
+			cpu.pc += 2
+		}
 		return
 	case INSN_DEC:
 		// Rd <- Rd - 1
@@ -328,40 +339,60 @@ func (cpu *CPU) Execute(i Instr) {
 		}
 		return
 	case INSN_IN:
-
+		// Rd <- I/O(A)
+		cpu.regs[i.dest] = cpu.dmem[i.ioaddr]
 		return
 	case INSN_LDDY:
-
+		// Rd <- (Y + q)
+		y := b2u16little([]byte{cpu.regs[29], cpu.regs[28]})
+		cpu.regs[i.dest] = cpu.dmem[y + i.offset]
 		return
 	case INSN_LDDZ:
-
+		// Rd <- (Z + q)
+		z := b2u16little([]byte{cpu.regs[31], cpu.regs[30]})
+		cpu.regs[i.dest] = cpu.dmem[z + i.offset]
 		return
 	case INSN_LDX:
-
+		// Rd <- (X)
+		x := b2u16little([]byte{cpu.regs[27], cpu.regs[26]})
+		cpu.regs[i.dest] = cpu.dmem[x]
 		return
 	case INSN_LDXP:
-
+		// Rd <- (X), X <- X + 1
+		x := b2u16little([]byte{cpu.regs[27], cpu.regs[26]})
+		cpu.regs[i.dest] = cpu.dmem[x]
+		cpu.regs[26] += 1
 		return
 	case INSN_LDY:
-
+		// Rd <- (Y)
+		y := b2u16little([]byte{cpu.regs[29], cpu.regs[28]})
+		cpu.regs[i.dest] = cpu.dmem[y]
 		return
 	case INSN_LDZ:
-
+		// Rd <- (Z) (dmem)
+		z := b2u16little([]byte{cpu.regs[31], cpu.regs[30]})
+		cpu.regs[i.dest] = cpu.dmem[z]
 		return
 	case INSN_LPMZ:
-
+		// Rd <- (Z) (imem)
+		z := b2u16little([]byte{cpu.regs[31], cpu.regs[30]})
+		cpu.regs[i.dest] = cpu.imem[z]
 		return
-	case INSN_LPMZP:
-		// Rd <- (Z), Z <- Z + 1
+	case INSN_LPMZP: 
+		// Rd <- (Z), Z <- Z + 1 (imem)
 		z := (cpu.regs[31] << 8) | cpu.regs[30]
 		cpu.regs[i.dest] = cpu.imem[z]
 		cpu.regs[30] += 1
 		return
 	case INSN_LPM:
-
+		// R0 <- (Z)
+		z := (cpu.regs[31] << 8) | cpu.regs[30]
+		cpu.regs[0] = cpu.imem[z]
 		return
 	case INSN_LSR:
-
+		// logical shift right Rd
+		r := cpu.regs[i.dest] >> 1
+		cpu.regs[i.dest] = r
 		return
 	case INSN_MOV:
 		// Rd <- Rr

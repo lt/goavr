@@ -315,7 +315,7 @@ func dissAssemble(b []byte) Instr {
 	case INSN_LPM:
 		// 1001 0101 1100 1000
 		// XXX ToDo: not tested
-		// i := Instr{label: m.label, family: m.family, source: 0x00}
+		// i.dest = 0
 		fmt.Printf("%.4x\tlpm\n", b2u16big(b))
 		return inst
 	case INSN_LSR:
