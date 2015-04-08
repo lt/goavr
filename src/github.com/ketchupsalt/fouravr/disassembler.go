@@ -5,6 +5,13 @@ import (
 )
 
 func dissAssemble(b []byte) Instr {
+	dm := map[byte]byte{
+		0: 24,
+		1: 26,
+		2: 28,
+		3: 30,
+	}
+	
 	fmt.Printf("pc: %.4x\t", (cpu.pc))
 	m := lookUp(b)
 	inst := Instr{family: m.family, label: m.label}
@@ -107,13 +114,13 @@ func dissAssemble(b []byte) Instr {
 		// 1001 001d dddd 0000 kkkk kkkk kkkk kkkk
 		inst.dest = ((b[1]&0x01)<<4 | ((b[0] & 0xf0) >> 4))
 		c := pop(2)
-		inst.k32 = b2u32little(c)
+		inst.k16 = b2i16little(c)
 		fmt.Printf("%.4x\tsts\t0x%.4x, r%d\n", b2u16big(b), inst.k16, inst.dest)
 		return inst
 	case INSN_LDS:
 		inst.dest = ((b[1]&0x01)<<4 | ((b[0] & 0xf0) >> 4))
 		c := cpu.imem.Fetch()
-		inst.k32 = b2u32little(c)
+		inst.k16 = b2i16little(c)
 		fmt.Printf("%.4x\tlds\tr%d, 0x%.4x\n", b2u16big(b), inst.dest, inst.k16)
 		return inst
 	case INSN_JMP:
@@ -135,12 +142,6 @@ func dissAssemble(b []byte) Instr {
 	case INSN_ADIW:
 		// 1001 0110 KKdd KKKK
 		// 24,26,28,30
-		dm := map[byte]byte{
-			0: 24,
-			1: 26,
-			2: 28,
-			3: 30,
-		}
 		inst.kdata = ((b[0] & 0xc0) >> 2) | (b[0] & 0x0f)
 		Rd := (b[0] & 0x30) >> 4
 		inst.dest = dm[Rd]
@@ -148,12 +149,6 @@ func dissAssemble(b []byte) Instr {
 		return inst
 	case INSN_SBIW:
 		// 1001 0111 KKdd KKKK
-		dm := map[byte]byte{
-			0: 24,
-			1: 26,
-			2: 28,
-			3: 30,
-		}
 		inst.kdata = ((b[0] & 0xc0) >> 2) | (b[0] & 0x0f)
 		Rd := (b[0] & 0x30) >> 4
 		inst.dest = dm[Rd]

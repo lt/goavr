@@ -58,6 +58,18 @@ Golang Logical Operators: (because I'm tired of looking this shit up)
 */
 
 func (cpu *CPU) Execute(i Instr) {
+
+	bitMasks := map[byte]byte{
+		1: 1,
+		2: 2,
+		3: 4,
+		4: 8,
+		5: 16,
+		6: 32,
+		7: 64,
+		8: 128,
+	}
+	
 	switch i.label {
 	case INSN_JMP:
 		// we all know this doesn't work because
@@ -129,51 +141,107 @@ func (cpu *CPU) Execute(i Instr) {
 	case INSN_SBI:
 		// I/O(A,b) <- 1
 		fmt.Printf("%.8b\n", cpu.dmem[i.ioaddr])
-		cpu.dmem[i.ioaddr] &= i.registerBit
+		// bitMasks is a map that looks up the mask to isolate
+		// the necessary bit
+		cpu.dmem[i.ioaddr] &= bitMasks[i.registerBit]
 		fmt.Printf("%.8b\n", cpu.dmem[i.ioaddr])
 		return
 	case INSN_CBI:
-
+		// I/O(A,b) <- 0
+		cpu.dmem[i.ioaddr] ^= bitMasks[i.registerBit]
+		fmt.Printf("%.8b\n", cpu.dmem[i.ioaddr])
 		return
 	case INSN_SBIC:
-
+		// If I/O(A,b) = 0 then PC <- PC + 2 (or 3) else PC <- PC + 1
+		s := i.registerBit - 1
+		r := cpu.dmem[i.ioaddr] & bitMasks[i.registerBit] >> s
+		if r == 0 {
+			// instructions are 1 word
+			cpu.pc += 2
+		}
 		return
 	case INSN_SBIS:
-
+		// If I/O(A,b) = 1 then PC <- PC + 2
+		s := i.registerBit - 1
+		r := cpu.dmem[i.ioaddr] & bitMasks[i.registerBit] >> s
+		if r == 1 {
+			// instructions are 1 word
+			cpu.pc += 2
+		}
 		return
 	case INSN_BLD:
-
+		// Rd(b) <- T
+		// Copies the T Flag in the SREG (Status Register) to bit b in register Rd.
+		t := (cpu.sr & int16(bitMasks[7])) >> 7
+		cpu.dmem[i.dest] = byte(t)
 		return
 	case INSN_BST:
-
+		// T <- Rd(b)
+		// Stores bit b from Rd to the T Flag in SREG (Status Register).
+		s := i.registerBit - 1
+		t := cpu.regs[i.dest] & bitMasks[i.registerBit] >> s
+		cpu.sr &= int16(t << 7)
 		return
 	case INSN_SBRC:
-
+		// if Rr(b) = 0 then PC += 2
+		s := i.registerBit - 1
+		r := (cpu.regs[i.source] & bitMasks[i.registerBit]) >> s
+		if r == 0 {
+			cpu.pc += 2
+		}
 		return
 	case INSN_STS:
-
+		// (k) <- Rr
+		cpu.dmem[i.k16] = cpu.regs[i.source]
 		return
 	case INSN_LDS:
-
+		// Rd <- (k)
+		cpu.regs[i.dest] = cpu.dmem[i.k16]
 		return
 	case INSN_ADIW:
-
+		// Rd+1:Rd <- Rd+1:Rd + K
+		kl := i.kdata & 0x0f
+		kh := (i.kdata & 0xf0) >> 4
+		// I think I may have swapped the byte order here.
+		// XXX TODO(ERIN)
+		cpu.regs[i.dest] = cpu.regs[i.dest] + kl
+		cpu.regs[i.dest+1] = cpu.regs[i.dest+1] + kh
 		return
 	case INSN_SBIW:
-
+		fmt.Println(i)
+		// Rd+1:Rd <- Rd+1:Rd - K
+		kl := i.kdata & 0x0f
+		kh := (i.kdata & 0xf0) >> 4
+		// XXX TODO(ERIN) See ADIW
+		cpu.regs[i.dest] = cpu.regs[i.dest] - kl
+		cpu.regs[i.dest+1] = cpu.regs[i.dest+1] - kh
+		r := b2u16little([]byte{cpu.regs[i.dest+1],cpu.regs[i.dest]} )
+		if r == 0 {
+			cpu.set_z()
+		} else {
+			cpu.clear_z()
+		}
 		return
 	case INSN_BRCC:
-
+		// Branch if carry cleared
+		c := cpu.sr & 0x01
+		if c == 0 {
+			cpu.pc += i.k16 //+1
+		}
 		return
 	case INSN_BRCS:
 		// Branch if carry set
 		c := cpu.sr & 0x01
 		if c == 1 {
-			cpu.pc = i.k16
-		} 
+			cpu.pc += i.k16
+		}
 		return
 	case INSN_BREQ:
-
+		//if Rd = Rr(Z=1) then PC <- PC + k + 1
+		r := (cpu.sr & int16(bitMasks[7])) >> 7
+		if r == 1 {
+			cpu.pc += i.k16
+		}
 		return
 	case INSN_BRGE:
 
