@@ -403,36 +403,116 @@ func (cpu *CPU) Execute(i Instr) {
 		cpu.regs[i.dest+1] = cpu.regs[i.source+1]
 		cpu.regs[i.dest] = cpu.regs[i.source]
 		return
-	case INSN_MUL:
-
-		return
 	case INSN_NEG:
-
+		// Replaces the contents of register Rd with its two's complement
+		r := ^cpu.regs[i.dest] + 1
+		cpu.regs[i.dest] = r
+		if r == 0 {
+			cpu.set_z()
+			cpu.clear_c()
+		} else {
+			cpu.clear_z()
+			cpu.set_c()
+		}
+		if ((r & 128) >> 7) == 1 {
+			cpu.set_n()
+		} else {
+			cpu.clear_n()
+		}
 		return
 	case INSN_OR:
-
+		// Rd <- Rd | Rr
+		r := cpu.regs[i.dest] | cpu.regs[i.source]
+		cpu.regs[i.dest] = r
+		cpu.clear_v()
+		if ((r & 12) >> 7) == 1 {
+			cpu.set_n()
+		} else {
+			cpu.clear_n()
+		}
+		if r == 0 {
+			cpu.set_z()
+		} else {
+			cpu.clear_z()
+		}
 		return
 	case INSN_ORI:
-
+		// Rd <- Rd | K
+		r := cpu.regs[i.dest] | uint8(i.kdata)
+		cpu.regs[i.dest] = r
+		if ((r & 12) >> 7) == 1 {
+			cpu.set_n()
+		} else {
+			cpu.clear_n()
+		}
+		if r == 0 {
+			cpu.set_z()
+		} else {
+			cpu.clear_z()
+		}		
 		return
 	case INSN_POP:
-
+		// Rd <- Stack
+		cpu.regs[i.dest] = cpu.dmem[cpu.sp]
+		cpu.sp += 1
 		return
 	case INSN_PUSH:
 		// STACK <- Rr
+		cpu.dmem[cpu.sp] = cpu.regs[i.source]
 		cpu.sp -= 1
 		return
 	case INSN_RET:
-
+		// PC <- Stack
+		cpu.pc = int16(cpu.dmem[cpu.sp])
+		cpu.pc += 1
 		return
 	case INSN_RETI:
-
+		// PC <- Stack, enable interrupts
+		cpu.pc = int16(cpu.dmem[cpu.sp])
+		cpu.pc += 1
+		cpu.set_i()
 		return
 	case INSN_ROR:
-
+		// Shifts all bits in Rd one place to the right.
+		// The C Flag is shifted into bit 7 of Rd.
+		// Bit 0 is shifted into the C Flag.
+		c := (cpu.regs[i.dest] & 0x80) >> 7
+		r := (cpu.regs[i.dest] >> 1) | uint8((cpu.sr & 0x01) << 7)
+		cpu.regs[i.dest] = r
+		if c == 0 {
+			cpu.set_c()
+		} else {
+			cpu.clear_c()
+		}
+		if r == 0 {
+			cpu.set_z()
+		} else {
+			cpu.clear_z()
+		}
+		if ((r & 0x80) >> 7) == 1 {
+			cpu.set_n()
+		} else {
+			cpu.clear_n()
+		}
 		return
 	case INSN_SBC:
-
+		// Rd = Rd - Rr - C
+		c := uint8(cpu.sr & 0x01)
+		if (cpu.regs[i.source] + c) > cpu.regs[i.dest] {
+			cpu.set_c()
+		} else {
+			cpu.clear_c()
+		}
+		r := cpu.regs[i.dest] - cpu.regs[i.source] - c
+		cpu.regs[i.dest] = r
+		if r != 0 {
+			cpu.clear_z()
+		}
+		if ((r & 0x80) >> 7) == 1 {
+			cpu.set_n()
+		} else {
+			cpu.clear_n()
+		}		
 		return
 	case INSN_SUBI:
 		// Rd <- Rd - K
@@ -467,14 +547,9 @@ func (cpu *CPU) Execute(i Instr) {
 		// set global interrupt flag
 		cpu.set_i()
 		return
-	case INSN_STDY:
-
-		return
-	case INSN_STDZ:
-
-		return
-	case INSN_STX:
-
+	case INSN_SUB:
+		// Rd <- Rd - Rr
+		cpu.regs[i.dest] = cpu.regs[i.dest] - cpu.regs[i.source]
 		return
 	case INSN_STXP:
 		// (X) <- Rr, X <- X + 1
@@ -483,6 +558,17 @@ func (cpu *CPU) Execute(i Instr) {
 		fmt.Printf("dmem: %.4x\t", x)
 		cpu.dmem[x] = cpu.regs[i.source]
 		cpu.regs[26] += 1
+		return
+	case INSN_MUL:
+		
+		return
+	case INSN_STDY:
+
+		return
+	case INSN_STDZ:
+
+		return
+	case INSN_STX:
 
 		return
 	case INSN_STXM:
@@ -499,10 +585,6 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_STZM:
 
-		return
-	case INSN_SUB:
-		// Rd <- Rd - Rr
-		cpu.regs[i.dest] = cpu.regs[i.dest] - cpu.regs[i.source]
 		return
 	default:
 		fmt.Println("I dunno.")
