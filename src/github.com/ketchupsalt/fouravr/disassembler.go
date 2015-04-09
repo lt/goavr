@@ -46,10 +46,11 @@ func dissAssemble(b []byte) Instr {
 		k := (uint32(b[1]&0x0f)<<8 | uint32(b[0]))
 		if ((k & 0x800) >> 11) == 1 {
 			inst.k16 = int16((k + 0xf000) << 1)
+			fmt.Printf("%.4x\trjmp\t.%d\n", b2u16big(b), inst.k16)
 		} else {
 			inst.k16 = int16(k << 1)
+			fmt.Printf("%.4x\trjmp\t.+%d\n", b2u16big(b), inst.k16)
 		}
-		fmt.Printf("%.4x\trjmp\t.+%d\n", b2u16big(b), inst.k16)
 		return inst
 	case INSN_LDI:
 		// 1110 KKKK dddd KKKK
@@ -153,6 +154,12 @@ func dissAssemble(b []byte) Instr {
 		Rd := (b[0] & 0x30) >> 4
 		inst.dest = dm[Rd]
 		fmt.Printf("%.4x\tsbiw\tr%d, 0x%.2x\n", b2u16big(b), inst.dest, inst.kdata)
+		return inst
+	case INSN_AND:
+		// 0010 00rd dddd rrrr
+		inst.source = (((b[1]&0x02)>>1)<<4 | (b[0] & 0x0f))
+		inst.dest = ((b[1]&0x01)<<4 | ((b[0] & 0xf0) >> 4))
+		fmt.Printf("%.4x\tand\tr%d, r%d\n", b2u16big(b), inst.dest, inst.source)
 		return inst
 	case INSN_ANDI:
 		//0111 KKKK dddd KKKK

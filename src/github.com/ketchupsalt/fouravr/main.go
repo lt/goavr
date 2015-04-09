@@ -51,11 +51,12 @@ func main() {
 
 	// Still don't know how to exit the program.
 	
-	for i := 0; i < 0x0712; i++  {
-		fmt.Println("")
+	for  cpu.pc != 0x0628  {
 		mi := cpu.imem.Fetch()
 		cpu.Execute(dissAssemble(mi))
 		fmt.Printf("pc: %.4x\tsr: %.8b\tsp: %.4x\t\n", cpu.pc, cpu.sr, cpu.sp)
 		printRegs(cpu.regs)
+		fmt.Println("Stack: ", cpu.dmem[cpu.sp:0x01ff])
+
 	}
 }

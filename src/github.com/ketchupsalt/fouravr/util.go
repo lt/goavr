@@ -69,7 +69,7 @@ func printRegs(b [32]uint8) {
 	for i, v := range(b) {
 		ret = append(ret, fmt.Sprintf("r%d[%d]", i, v))
 	}
-	fmt.Println("Registers")
+	fmt.Println("Registers:")
 	fmt.Println(ret[0:17])
 	fmt.Println(ret[17:32])
 
