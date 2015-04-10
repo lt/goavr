@@ -51,7 +51,7 @@ func main() {
 
 	// Still don't know how to exit the program.
 	
-	for  cpu.pc != 0x0628  {
+	for  cpu.pc != 0x063e  {
 		mi := cpu.imem.Fetch()
 		cpu.Execute(dissAssemble(mi))
 		fmt.Printf("pc: %.4x\tsr: %.8b\tsp: %.4x\t\n", cpu.pc, cpu.sr, cpu.sp)

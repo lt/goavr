@@ -76,6 +76,14 @@ func (cpu *CPU) Execute(i Instr) {
 		// this version doesn't have a 22bit pc
 		//cpu.pc = i.k32
 		return
+	case INSN_IJMP:
+		// PC <- Z(15:0)
+		z := int16((cpu.regs[31] << 4)) | int16(cpu.regs[30])
+		fmt.Printf("%.16b\n", z)
+		// Because the PC gets incremented automatically
+		// XXX TODO(ERIN) does 2 need to be subtracted from this?
+		cpu.pc = z //- 2
+		return
 	case INSN_RJMP:
 		// PC <- PC + k + 1
 		cpu.pc = cpu.pc + i.k16
@@ -378,10 +386,38 @@ func (cpu *CPU) Execute(i Instr) {
 		y := b2u16little([]byte{cpu.regs[29], cpu.regs[28]})
 		cpu.regs[i.dest] = cpu.dmem[y]
 		return
+	case INSN_LDYP:
+		// Rd <- (Y), Y <- Y + 1
+		y := b2u16little([]byte{cpu.regs[29], cpu.regs[28]})
+		cpu.regs[i.dest] = cpu.dmem[y]
+		// XXX TODO(ERIN) this could overflow into the high
+		// byte someday.
+		cpu.regs[28] += 1
+		return
+	case INSN_LDYM:
+		// Rd <- (Y), Y <- Y - 1
+		y := b2u16little([]byte{cpu.regs[29], cpu.regs[28]})
+		cpu.regs[i.dest] = cpu.dmem[y]
+		cpu.regs[28] -= 1
+		return
 	case INSN_LDZ:
 		// Rd <- (Z) (dmem)
 		z := b2u16little([]byte{cpu.regs[31], cpu.regs[30]})
 		cpu.regs[i.dest] = cpu.dmem[z]
+		return
+	case INSN_LDZP:
+		// Rd <- (Z) (dmem), Z <= Z - 1
+		z := b2u16little([]byte{cpu.regs[31], cpu.regs[30]})
+		cpu.regs[i.dest] = cpu.dmem[z]
+		// XXX TODO(ERIN) this could overflow into the high
+		// byte some
+		cpu.regs[30] += 1
+		return
+		case INSN_LDZM:
+		// Rd <- (Z) (dmem), Z <- Z - 1
+		z := b2u16little([]byte{cpu.regs[31], cpu.regs[30]})
+		cpu.regs[i.dest] = cpu.dmem[z]
+		cpu.regs[30] -= 1
 		return
 	case INSN_LPMZ:
 		// Rd <- (Z) (imem)

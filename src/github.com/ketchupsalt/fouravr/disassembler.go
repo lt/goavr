@@ -11,7 +11,7 @@ func dissAssemble(b []byte) Instr {
 		2: 28,
 		3: 30,
 	}
-	
+
 	fmt.Printf("pc: %.4x\t", (cpu.pc))
 	m := lookUp(b)
 	inst := Instr{family: m.family, label: m.label}
@@ -124,13 +124,17 @@ func dissAssemble(b []byte) Instr {
 		inst.k16 = b2i16little(c)
 		fmt.Printf("%.4x\tlds\tr%d, 0x%.4x\n", b2u16big(b), inst.dest, inst.k16)
 		return inst
+	case INSN_IJMP:
+		// 1001 0100 0000 1001
+		fmt.Printf("%.4x\tijmp\n", b2u16big(b))
+		return inst
 	case INSN_JMP:
 		// 1001 010k kkkk 110k kkkk kkkk kkkk kkkk
 		var k1, k2, k3 uint32
-		k1 = uint32(b[1] & 0x01)<< 20
-		k2 = uint32(b[0] & 0xf0)<< 12
+		k1 = uint32(b[1]&0x01) << 20
+		k2 = uint32(b[0]&0xf0) << 12
 		c := cpu.imem.Fetch()
-		k3 = uint32(c[1]) << 8 | uint32(c[0])
+		k3 = uint32(c[1])<<8 | uint32(c[0])
 		inst.k32 = k1 | k2 | k3
 		fmt.Printf("%.4x\tjmp\t0x%.8x\t;%d\n", b2u16big(b), inst.k32, inst.k32)
 		return inst
@@ -219,10 +223,10 @@ func dissAssemble(b []byte) Instr {
 		// if it is, the result is negative.
 		if ((k & 0x40) >> 6) == 1 {
 			inst.k16 = int16((k + 0xff80) << 1)
-		fmt.Printf("%.4x\tbrne\t.%d\n", b2u16big(b), inst.k16)
+			fmt.Printf("%.4x\tbrne\t.%d\n", b2u16big(b), inst.k16)
 		} else {
 			inst.k16 = int16(k << 1)
-		fmt.Printf("%.4x\tbrne\t.+%d\n", b2u16big(b), inst.k16)
+			fmt.Printf("%.4x\tbrne\t.+%d\n", b2u16big(b), inst.k16)
 		}
 		return inst
 	case INSN_BRTC:
@@ -271,7 +275,7 @@ func dissAssemble(b []byte) Instr {
 		return inst
 	case INSN_IN:
 		// 1011 0AAd dddd AAAA
-		inst.ioaddr = ((b[1] & 0x09) << 3) | (b[0] & 0x0f)
+		inst.ioaddr = ((b[1] & 0x06) << 3) | (b[0] & 0x0f)
 		inst.dest = ((b[1] & 0xf1) << 4) | ((b[0] & 0xf0) >> 4)
 		fmt.Printf("%.4x\tin\tr%d, 0x%.2x\n", b2u16big(b), inst.dest, inst.ioaddr)
 		return inst
@@ -302,10 +306,28 @@ func dissAssemble(b []byte) Instr {
 		inst.dest = ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
 		fmt.Printf("%.4x\tld\tr%d, Y\n", b2u16big(b), inst.dest)
 		return inst
+	case INSN_LDYP:
+		inst.dest = ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
+		fmt.Printf("%.4x\tld\tr%d, Y+\n", b2u16big(b), inst.dest)
+		return inst
+	case INSN_LDYP:
+		inst.dest = ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
+		fmt.Printf("%.4x\tld\tr%d, -Y\n", b2u16big(b), inst.dest)
+		return inst
 	case INSN_LDZ:
 		// 1000 000d dddd 0000
 		inst.dest = ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
 		fmt.Printf("%.4x\tld\tr%d, Z\n", b2u16big(b), inst.dest)
+		return inst
+	case INSN_LDZP:
+		// 1000 000d dddd 0000
+		inst.dest = ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
+		fmt.Printf("%.4x\tld\tr%d, Z+\n", b2u16big(b), inst.dest)
+		return inst
+	case INSN_LDZP:
+		// 1000 000d dddd 0000
+		inst.dest = ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
+		fmt.Printf("%.4x\tld\tr%d, -Z\n", b2u16big(b), inst.dest)
 		return inst
 	case INSN_LPMZ:
 		//z  1001 000d dddd 0100
@@ -372,8 +394,8 @@ func dissAssemble(b []byte) Instr {
 		return inst
 	case INSN_PUSH:
 		//1001 001d dddd 1111
-		inst.dest = ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
-		fmt.Printf("%.4x\tpush\tr%d\n", b2u16big(b), inst.dest)
+		inst.source = ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
+		fmt.Printf("%.4x\tpush\tr%d\n", b2u16big(b), inst.source)
 		return inst
 	case INSN_RET:
 		fmt.Printf("%.4x\tret\n", b2u16big(b))
@@ -494,8 +516,19 @@ func deConvoluter(b uint16, op OpCode) OpCode {
 	switch x {
 	case 0x8000:
 		if offset == 0 {
-			op.mnemonic = "ldz"
-			op.label = INSN_LDZ
+			s := b & 0x000f
+			switch s {
+			case 0:
+				op.mnemonic = "ldz"
+				op.label = INSN_LDZ
+			case 1:
+				op.mnemonic = "ldz+"
+				op.label = INSN_LDZP
+			case 2:
+				op.mnemonic = "ldz-"
+				op.label = INSN_LDZM
+			}
+
 		} else {
 			op.mnemonic = "lddz"
 			op.offset = offset
@@ -503,8 +536,18 @@ func deConvoluter(b uint16, op OpCode) OpCode {
 		}
 	case 0x8008:
 		if offset == 0 {
-			op.mnemonic = "ldy"
-			op.label = INSN_LDY
+			s := b & 0x000f
+			switch s {
+			case 8:
+				op.mnemonic = "ldy"
+				op.label = INSN_LDY
+			case 9:
+				op.mnemonic = "ldy+"
+				op.label = INSN_LDYP
+			case 10:
+				op.mnemonic = "ldy-"
+				op.label = INSN_LDYM
+			}
 		} else {
 			op.mnemonic = "lddy"
 			op.offset = offset
@@ -512,8 +555,18 @@ func deConvoluter(b uint16, op OpCode) OpCode {
 		}
 	case 0x8200:
 		if offset == 0 {
-			op.mnemonic = "stz"
-			op.label = INSN_STZ
+			s := b & 0x000f
+			switch s {
+			case 0:
+				op.mnemonic = "stz"
+				op.label = INSN_STZ
+			case 1:
+				op.mnemonic = "stz+"
+				op.label = INSN_STZP
+			case 2:
+				op.mnemonic = "stz-"
+				op.label = INSN_STZM
+			}
 		} else {
 			op.mnemonic = "stdz"
 			op.offset = offset
@@ -521,8 +574,18 @@ func deConvoluter(b uint16, op OpCode) OpCode {
 		}
 	case 0x8208:
 		if offset == 0 {
-			op.mnemonic = "sty"
-			op.label = INSN_STY
+			s := b & 0x000f
+			switch s {
+			case 8:
+				op.mnemonic = "sty"
+				op.label = INSN_STY
+			case 9:
+				op.mnemonic = "sty+"
+				op.label = INSN_STYP
+			case 10:
+				op.mnemonic = "sty-"
+				op.label = INSN_STYM
+			}
 		} else {
 			op.mnemonic = "stdy"
 			op.offset = offset

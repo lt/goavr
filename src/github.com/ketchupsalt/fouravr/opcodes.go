@@ -80,9 +80,13 @@ const (
 	INSN_LDXP
 	INSN_LDXM
 	INSN_LDDY
-	INSN_LDDZ
 	INSN_LDY
+	INSN_LDYP
+	INSN_LDYM
 	INSN_LDZ
+	INSN_LDZP
+	INSN_LDZM
+	INSN_LDDZ
 	INSN_LDI
 	INSN_LDS
 	INSN_LPM
@@ -250,6 +254,13 @@ var OpCodeLookUpTable = []OpCode{
 		value:    0xc000,
 		family:   Branches,
 		label:    INSN_RJMP,
+	},
+	OpCode{
+		mnemonic: "ijmp",
+		mask: 0xffff,
+		value: 0x9409,
+		family: Branches,
+		label: INSN_IJMP,
 	},
 	OpCode{
 		mnemonic: "rcall",
@@ -546,13 +557,15 @@ var OpCodeLookUpTable = []OpCode{
 		label:    INSN_MUL,
 	},
 	// =======
-	// Things that work with registers
-	// This are tricky. the q values are interpolated into the other bits.
+	// Things that load stuff from data space or program memory into registers
+	// These are tricky. the q values are interpolated into the other bits.
 	// But applying the same mask as the other LD w/Z ops gives 0x8001.
 	// I'm going to leave it this way until another opcode with that value comes
 	// along (and hope that it won't).
 	// XXX TODO: This screws up the actual mask value for this opcode. Which
 	// Likely means that the way I'm doing all of these opcodes is wrong. Yay.
+	// ========
+	// LOAD FROM DATA SPACE
 	// ========
 	// LD Rd, X
 	OpCode{
@@ -579,6 +592,11 @@ var OpCodeLookUpTable = []OpCode{
 		label:    INSN_LDXM,
 	},
 	// LD Rd, Z
+	// LD Rd, Z+
+	// LD Rd, -Z
+	// LD Rd, Y
+	// LD Rd, Y+
+	// LD Rd, -Y
 	// LDD Rd, Y+q
 	// LDD Rd, Z+q
 	OpCode{
@@ -588,6 +606,9 @@ var OpCodeLookUpTable = []OpCode{
 		family:   Transfers,
 		// Label set elsewhere
 	},
+	// ========
+	// STORE TO DATA SPACE
+	// ========
 	// ST X, Rr
 	OpCode{
 		mnemonic: "stx",
@@ -622,6 +643,9 @@ var OpCodeLookUpTable = []OpCode{
 		family:   Transfers,
 		// label set later
 	},
+/*
+    // I don't think these are in the 9200 range. Dunno how I got this value.
+    // 10 Apr 2015
 	// ST Y+, Rr
 	OpCode{
 		mnemonic: "sty+",
@@ -654,6 +678,10 @@ var OpCodeLookUpTable = []OpCode{
 		family:   Transfers,
 		label:    INSN_STZM,
 	},
+*/
+	// ========
+	// LOAD FROM PROGRAM MEMORY
+	// ========
 	// LPM Rd, Z
 	OpCode{
 		mnemonic: "lpmz",
@@ -678,7 +706,7 @@ var OpCodeLookUpTable = []OpCode{
 		label:    INSN_LPM,
 	},
 	// =======
-	// END things that work with registers
+	// END things that work with memory <-> registers
 	// ======
 	// 32 bit opcodes:
 	OpCode{
