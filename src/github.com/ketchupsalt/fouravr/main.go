@@ -66,11 +66,6 @@ func main() {
 	// Still don't know how to exit the program.
 	
 	for  cpu.pc != programEnd  {
-		fmt.Printf("pc: %.4x\tsr: %.8b\tsp: %.4x\t\n", cpu.pc, cpu.sr, cpu.sp)
-		mi := cpu.imem.Fetch()
-		cpu.Execute(dissAssemble(mi))
-		printRegs(cpu.regs)
-		fmt.Println("Stack: ", cpu.dmem[cpu.sp:0x01ff])
-		fmt.Println("---------------------------------")
+		cpu.Interactive()
 	}
 }

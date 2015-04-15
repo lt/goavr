@@ -32,7 +32,7 @@ func (mem *Memory) LoadProgram(data []byte) {
 }
 
 func (mem *Memory) Dump() string {
-	return hex.Dump(mem[0:len(data)])
+	return hex.Dump(mem[0:])
 }
 
 // Here but unused.

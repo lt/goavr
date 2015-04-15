@@ -1,7 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"os"
+	"strconv"
+	"strings"
 )
 
 // AVR indirect pointer registers.
@@ -57,6 +61,60 @@ Golang Logical Operators: (because I'm tired of looking this shit up)
 >>   right shift
 */
 
+func (cpu *CPU) Step() {
+	fmt.Printf("pc: %.4x\tsr: %.8b\tsp: %.4x\t\n", cpu.pc, cpu.sr, cpu.sp)
+	mi := cpu.imem.Fetch()
+	cpu.Execute(dissAssemble(mi))
+	printRegs(cpu.regs)
+	fmt.Println("Stack: ", cpu.dmem[cpu.sp:0x01ff])
+	fmt.Println("---------------------------------")
+}
+
+func (cpu *CPU) Interactive() {
+	for {
+		prompt := bufio.NewReader(os.Stdin)
+		fmt.Print("$> ")
+
+		response, err := prompt.ReadString('\n')
+
+		check(err)
+		// Ugh.
+		r := strings.Split(response, "\n")
+
+		switch r[0] {
+		case "go":
+			fmt.Println("Okay!")
+				for {
+					cpu.Step()
+					if cpu.pc == programEnd { break }
+				}
+		case "exit":
+			os.Exit(0)
+		case "step":
+			var b string
+			for {
+				cpu.Step()
+				fmt.Scanf("%s", &b)
+				if b == "x" { break }
+				if cpu.pc == programEnd { break }
+			}
+		case "back":
+			cpu.pc -= 2
+		default:
+			// default case: step n times
+			n, err := strconv.Atoi(r[0])
+			check(err)
+			for i := 1; i < (n + 1); i++ {
+				var b string
+				cpu.Step()
+				fmt.Scanf("%s", &b)
+				if b == "x" { break }
+				if cpu.pc == programEnd { break }
+			}
+		}
+	}
+}
+
 func (cpu *CPU) Execute(i Instr) {
 
 	bitMasks := map[byte]byte{
@@ -69,7 +127,7 @@ func (cpu *CPU) Execute(i Instr) {
 		7: 64,
 		8: 128,
 	}
-	
+
 	switch i.label {
 	case INSN_JMP:
 		// we all know this doesn't work because
@@ -78,7 +136,7 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_IJMP:
 		// PC <- Z(15:0)
-		z := b2i16little([]byte{cpu.regs[30],cpu.regs[31]})
+		z := b2i16little([]byte{cpu.regs[30], cpu.regs[31]})
 		// Because the PC gets incremented automatically
 		// we need to subtract 2 here.
 		cpu.pc = z - 2
@@ -244,7 +302,7 @@ func (cpu *CPU) Execute(i Instr) {
 		// XXX TODO(ERIN) See ADIW
 		cpu.regs[i.dest] = cpu.regs[i.dest] - kl
 		cpu.regs[i.dest+1] = cpu.regs[i.dest+1] - kh
-		r := b2u16little([]byte{cpu.regs[i.dest],cpu.regs[i.dest+1]} )
+		r := b2u16little([]byte{cpu.regs[i.dest], cpu.regs[i.dest+1]})
 		if r == 0 {
 			cpu.set_z()
 		} else {
@@ -386,12 +444,12 @@ func (cpu *CPU) Execute(i Instr) {
 	case INSN_LDDY:
 		// Rd <- (Y + q)
 		y := b2u16little([]byte{cpu.regs[28], cpu.regs[29]})
-		cpu.regs[i.dest] = cpu.dmem[y + i.offset]
+		cpu.regs[i.dest] = cpu.dmem[y+i.offset]
 		return
 	case INSN_LDDZ:
 		// Rd <- (Z + q)
 		z := b2u16little([]byte{cpu.regs[30], cpu.regs[31]})
-		cpu.regs[i.dest] = cpu.dmem[z + i.offset]
+		cpu.regs[i.dest] = cpu.dmem[z+i.offset]
 		return
 	case INSN_LDX:
 		// Rd <- (X)
@@ -438,7 +496,7 @@ func (cpu *CPU) Execute(i Instr) {
 		// byte some
 		cpu.regs[30] += 1
 		return
-		case INSN_LDZM:
+	case INSN_LDZM:
 		// Rd <- (Z) (dmem), Z <- Z - 1
 		z := b2u16little([]byte{cpu.regs[30], cpu.regs[31]})
 		// pre-decrement
@@ -450,7 +508,7 @@ func (cpu *CPU) Execute(i Instr) {
 		z := b2i16little([]byte{cpu.regs[30], cpu.regs[31]})
 		cpu.regs[i.dest] = cpu.imem[z]
 		return
-	case INSN_LPMZP: 
+	case INSN_LPMZP:
 		// Rd <- (Z), Z <- Z + 1 (imem)
 		//z := int16(cpu.regs[31] << 8) | int16(cpu.regs[30])
 		z := b2i16little([]byte{cpu.regs[30], cpu.regs[31]})
@@ -524,7 +582,7 @@ func (cpu *CPU) Execute(i Instr) {
 			cpu.set_z()
 		} else {
 			cpu.clear_z()
-		}		
+		}
 		return
 	case INSN_POP:
 		// Rd <- Stack
@@ -533,7 +591,7 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_PUSH:
 		// STACK <- Rr
-		cpu.dmem[cpu.sp -1] = cpu.regs[i.source]
+		cpu.dmem[cpu.sp-1] = cpu.regs[i.source]
 		cpu.sp -= 1
 		return
 	case INSN_RCALL:
@@ -541,24 +599,24 @@ func (cpu *CPU) Execute(i Instr) {
 		// push the current PC onto the stack because
 		// it is automaticaly incremented elsewhere.
 		// low byte
-		cpu.dmem[cpu.sp - 1] = byte(cpu.pc & 0x00ff)
+		cpu.dmem[cpu.sp-1] = byte(cpu.pc & 0x00ff)
 		// high byte
-		cpu.dmem[cpu.sp - 2] = byte(cpu.pc >> 8)
+		cpu.dmem[cpu.sp-2] = byte(cpu.pc >> 8)
 		// says +1, but that generates the wrong value
 		// because the PC is incremented automaticaly anyway
-		cpu.pc = cpu.pc + i.k16  //+ 1
+		cpu.pc = cpu.pc + i.k16 //+ 1
 		cpu.sp -= 2
 		return
 	case INSN_RET:
 		// PC <- Stack
 		low := cpu.dmem[cpu.sp]
-		high := cpu.dmem[cpu.sp + 1]
+		high := cpu.dmem[cpu.sp+1]
 		cpu.pc = b2i16little([]byte{high, low})
 		cpu.sp += 2
 		return
 	case INSN_RETI:
 		// PC <- Stack, enable interrupts
-		low := cpu.dmem[cpu.sp - 1]
+		low := cpu.dmem[cpu.sp-1]
 		high := cpu.dmem[cpu.sp]
 		cpu.pc = b2i16little([]byte{high, low})
 		cpu.sp += 2
@@ -569,7 +627,7 @@ func (cpu *CPU) Execute(i Instr) {
 		// The C Flag is shifted into bit 7 of Rd.
 		// Bit 0 is shifted into the C Flag.
 		c := (cpu.regs[i.dest] & 0x80) >> 7
-		r := (cpu.regs[i.dest] >> 1) | uint8((cpu.sr & 0x01) << 7)
+		r := (cpu.regs[i.dest] >> 1) | uint8((cpu.sr&0x01)<<7)
 		cpu.regs[i.dest] = r
 		if c == 0 {
 			cpu.set_c()
@@ -604,7 +662,7 @@ func (cpu *CPU) Execute(i Instr) {
 			cpu.set_n()
 		} else {
 			cpu.clear_n()
-		}		
+		}
 		return
 	case INSN_SUBI:
 		// Rd <- Rd - K
@@ -695,37 +753,37 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_STDY:
 		// (Y) <- Rr
-		y := uint16(cpu.regs[29] << 8) | uint16(cpu.regs[28])
-		cpu.dmem[y + i.offset] = cpu.regs[i.source]
+		y := uint16(cpu.regs[29]<<8) | uint16(cpu.regs[28])
+		cpu.dmem[y+i.offset] = cpu.regs[i.source]
 		return
 	case INSN_STDZ:
-		z := uint16(cpu.regs[31] << 8) | uint16(cpu.regs[30])
-		cpu.dmem[z + i.offset] = cpu.regs[i.source]		
+		z := uint16(cpu.regs[31]<<8) | uint16(cpu.regs[30])
+		cpu.dmem[z+i.offset] = cpu.regs[i.source]
 		return
 	case INSN_STX:
-		x := uint16(cpu.regs[27] << 8) | uint16(cpu.regs[26])
-		cpu.dmem[x] = cpu.regs[i.source]		
+		x := uint16(cpu.regs[27]<<8) | uint16(cpu.regs[26])
+		cpu.dmem[x] = cpu.regs[i.source]
 		return
 	case INSN_STXM:
-		x := uint16(cpu.regs[27] << 8) | uint16(cpu.regs[26])
-		cpu.dmem[x - 1] = cpu.regs[i.source]
+		x := uint16(cpu.regs[27]<<8) | uint16(cpu.regs[26])
+		cpu.dmem[x-1] = cpu.regs[i.source]
 		return
 	case INSN_STY:
-		y := uint16(cpu.regs[27] << 8) | uint16(cpu.regs[26])
+		y := uint16(cpu.regs[27]<<8) | uint16(cpu.regs[26])
 		cpu.dmem[y] = cpu.regs[i.source]
 		return
 	case INSN_STZ:
-		z := uint16(cpu.regs[27] << 8) | uint16(cpu.regs[26])
+		z := uint16(cpu.regs[27]<<8) | uint16(cpu.regs[26])
 		cpu.dmem[z] = cpu.regs[i.source]
 		return
 	case INSN_STZP:
-		z := uint16(cpu.regs[27] << 8) | uint16(cpu.regs[26])
+		z := uint16(cpu.regs[27]<<8) | uint16(cpu.regs[26])
 		cpu.dmem[z] = cpu.regs[i.source]
 		cpu.regs[26] += 1
 		return
 	case INSN_STZM:
-		z := uint16(cpu.regs[27] << 8) | uint16(cpu.regs[26])
-		cpu.dmem[z - 1] = cpu.regs[i.source]
+		z := uint16(cpu.regs[27]<<8) | uint16(cpu.regs[26])
+		cpu.dmem[z-1] = cpu.regs[i.source]
 		return
 	default:
 		fmt.Println("I dunno.")
