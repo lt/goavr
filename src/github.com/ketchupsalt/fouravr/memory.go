@@ -7,7 +7,7 @@ import 	"encoding/hex"
 // Both data memory and program memory inherit
 // from here.
 
-type Memory [4096]byte
+type Memory [2048]byte
 
 // Use Fetch() for grabbing 2 bytes from program memory.
 // Increments the program counter.
@@ -34,6 +34,7 @@ func (mem *Memory) LoadProgram(data []byte) {
 func (mem *Memory) Dump() string {
 	return hex.Dump(mem[0:])
 }
+
 
 // Here but unused.
 func (mem *Memory) Store(i int16, b byte) {

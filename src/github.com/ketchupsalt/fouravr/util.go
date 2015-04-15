@@ -21,6 +21,8 @@ func b2i16little(in []byte) int16 { return (int16(in[1]) << 8) | int16(in[0]) }
 
 func b2u32little(in []byte) uint32 { return (uint32(in[1]) << 8) | uint32(in[0]) }
 
+func b2i32little(in []byte) int32 { return (int32(in[1]) << 8) | int32(in[0]) }
+
 func check(e error) {
 	if e != nil {
 		panic(e)
@@ -39,7 +41,7 @@ func getStuff(file *elf.File) {
 	check(err)
 	data = append(data, ret...)
 	// get the location of the last instruction.
-	programEnd = b2i16little(data[len(data)-2:len(data)])
+	programEnd = int16(len(data) - 2)
 	// get data stuff
 	for i, s := range file.Sections {
 		if s.SectionHeader.Name == ".data" {

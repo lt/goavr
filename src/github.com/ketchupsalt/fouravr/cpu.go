@@ -82,34 +82,53 @@ func (cpu *CPU) Interactive() {
 		r := strings.Split(response, "\n")
 
 		switch r[0] {
-		case "go":
-			fmt.Println("Okay!")
-				for {
-					cpu.Step()
-					if cpu.pc == programEnd { break }
+		case "g":
+			for {
+				cpu.Step()
+				if cpu.pc == programEnd {
+					break
 				}
-		case "exit":
+			}
+		case "q":
 			os.Exit(0)
-		case "step":
+		case "s":
 			var b string
 			for {
 				cpu.Step()
 				fmt.Scanf("%s", &b)
-				if b == "x" { break }
+				if b == "x" {
+					break
+				}
 				if cpu.pc == programEnd { break }
 			}
-		case "back":
+		case "b":
 			cpu.pc -= 2
-		default:
-			// default case: step n times
-			n, err := strconv.Atoi(r[0])
-			check(err)
-			for i := 1; i < (n + 1); i++ {
-				var b string
+		case "r":
+			cpu.pc = 0x0026
+		case "d":
+			fmt.Println(cpu.dmem.Dump())
+		case "j":
+			var o int16
+			fmt.Println("Enter pc:")
+			fmt.Scanf("%x", &o)
+			for cpu.pc < (o + 2) {
 				cpu.Step()
-				fmt.Scanf("%s", &b)
-				if b == "x" { break }
 				if cpu.pc == programEnd { break }
+			}
+		default:
+			var n int
+			// default case: step n times
+			if r[0] == "" {
+				n = 5
+			} else {
+				n, err = strconv.Atoi(r[0])
+				check(err)
+			}
+			for i := 1; i < (n + 1); i++ {
+				cpu.Step()
+				if cpu.pc == programEnd {
+					break
+				}
 			}
 		}
 	}
@@ -117,16 +136,7 @@ func (cpu *CPU) Interactive() {
 
 func (cpu *CPU) Execute(i Instr) {
 
-	bitMasks := map[byte]byte{
-		1: 1,
-		2: 2,
-		3: 4,
-		4: 8,
-		5: 16,
-		6: 32,
-		7: 64,
-		8: 128,
-	}
+	bitMasks := []byte{0, 1, 2, 4, 8, 16, 32, 64, 128}
 
 	switch i.label {
 	case INSN_JMP:
@@ -137,9 +147,7 @@ func (cpu *CPU) Execute(i Instr) {
 	case INSN_IJMP:
 		// PC <- Z(15:0)
 		z := b2i16little([]byte{cpu.regs[30], cpu.regs[31]})
-		// Because the PC gets incremented automatically
-		// we need to subtract 2 here.
-		cpu.pc = z - 2
+		cpu.pc = z - 1
 		return
 	case INSN_RJMP:
 		// PC <- PC + k + 1
@@ -288,25 +296,42 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_ADIW:
 		// Rd+1:Rd <- Rd+1:Rd + K
-		kl := i.kdata & 0x0f
-		kh := (i.kdata & 0xf0) >> 4
-		// I think I may have swapped the byte order here.
-		// XXX TODO(ERIN)
-		cpu.regs[i.dest] = cpu.regs[i.dest] + kl
-		cpu.regs[i.dest+1] = cpu.regs[i.dest+1] + kh
-		return
-	case INSN_SBIW:
-		// Rd+1:Rd <- Rd+1:Rd - K
-		kl := i.kdata & 0x0f
-		kh := (i.kdata & 0xf0) >> 4
-		// XXX TODO(ERIN) See ADIW
-		cpu.regs[i.dest] = cpu.regs[i.dest] - kl
-		cpu.regs[i.dest+1] = cpu.regs[i.dest+1] - kh
-		r := b2u16little([]byte{cpu.regs[i.dest], cpu.regs[i.dest+1]})
+		// low byte
+		x := uint16(cpu.regs[i.dest])
+		// high byte
+		y := uint16(cpu.regs[i.dest+1])
+		r := ((y << 8) | x) + uint16(i.kdata)
+		cpu.regs[i.dest] = uint8(r & 0x00ff)
+		cpu.regs[i.dest+1] = uint8(r >> 8)
 		if r == 0 {
 			cpu.set_z()
 		} else {
 			cpu.clear_z()
+		}
+		if (r >> 15) == 1 {
+			cpu.set_n()
+		} else {
+			cpu.clear_n()
+		}
+		return
+	case INSN_SBIW:
+		// Rd+1:Rd <- Rd+1:Rd - K
+		// low byte
+		x := uint16(cpu.regs[i.dest])
+		// high byte
+		y := uint16(cpu.regs[i.dest+1])
+		r := ((y << 8) | x) - uint16(i.kdata)
+		cpu.regs[i.dest] = uint8(r & 0x00ff)
+		cpu.regs[i.dest+1] = uint8(r >> 8)
+		if r == 0 {
+			cpu.set_z()
+		} else {
+			cpu.clear_z()
+		}
+		if (r >> 15) == 1 {
+			cpu.set_n()
+		} else {
+			cpu.clear_n()
 		}
 		return
 	case INSN_BRCC:
@@ -732,7 +757,6 @@ func (cpu *CPU) Execute(i Instr) {
 		// 26 = low byte, 27 = high byte
 		x := b2i16little([]byte{cpu.regs[26], cpu.regs[27]})
 		cpu.dmem[x] = cpu.regs[i.source]
-		fmt.Printf("char at %.4x:\t%.4x\n", x, cpu.dmem[x])
 		cpu.regs[26] += 1
 		return
 	case INSN_MUL:
