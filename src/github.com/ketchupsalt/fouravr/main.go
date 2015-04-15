@@ -4,17 +4,18 @@ import (
 	"debug/elf"
 	"flag"
 	"fmt"
-//	"os"
+	"os"
 )
 
 var fileName string
-var cSize int = 2
-var pc = 0
-var data []byte
+var dumpMem, dumpProg bool 
+
 
 
 func init() {
 	flag.StringVar(&fileName, "f", fileName, "File path, yo")
+	flag.BoolVar(&dumpMem, "d", false, "Just dump the program memory")
+	flag.BoolVar(&dumpProg, "p", false, "Pretty print the whole file")
 }
 
 var cpu CPU
@@ -30,10 +31,23 @@ func main() {
 		cpu.imem.LoadProgram([]byte{0x27, 0x7f})		
 	} else {
 		file, _ := elf.Open(fileName)
-		getExecutableStuff(file)
-		cpu.imem.LoadProgram(data)
+
+		if dumpProg == true {
+			dissectExecutable(file)
+			os.Exit(0)
+		} else {
+			getStuff(file)
+			cpu.imem.LoadProgram(data)
+		}
 	}
 
+	if dumpMem == true {
+		fmt.Println(cpu.imem.Dump())
+		os.Exit(0)
+	}
+
+
+	
 	//mi := dissAssemble(pop(2))
 	// sample JMP instruction 94 0c bb c5
 	// 1001 0100 0000 1100 1011 1011 1100 0101
@@ -51,12 +65,12 @@ func main() {
 
 	// Still don't know how to exit the program.
 	
-	for  cpu.pc != 0x063e  {
+	for  cpu.pc != programEnd  {
+		fmt.Printf("pc: %.4x\tsr: %.8b\tsp: %.4x\t\n", cpu.pc, cpu.sr, cpu.sp)
 		mi := cpu.imem.Fetch()
 		cpu.Execute(dissAssemble(mi))
-		fmt.Printf("pc: %.4x\tsr: %.8b\tsp: %.4x\t\n", cpu.pc, cpu.sr, cpu.sp)
 		printRegs(cpu.regs)
 		fmt.Println("Stack: ", cpu.dmem[cpu.sp:0x01ff])
-
+		fmt.Println("---------------------------------")
 	}
 }

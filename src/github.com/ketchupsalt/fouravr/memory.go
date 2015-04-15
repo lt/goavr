@@ -1,5 +1,8 @@
 package main
 
+
+import 	"encoding/hex"
+
 // 4096 max size of program memory.
 // Both data memory and program memory inherit
 // from here.
@@ -26,6 +29,10 @@ func (mem *Memory) LoadProgram(data []byte) {
 	for i, b := range(data) {
 		mem[i] = b
 	}
+}
+
+func (mem *Memory) Dump() string {
+	return hex.Dump(mem[0:len(data)])
 }
 
 // Here but unused.

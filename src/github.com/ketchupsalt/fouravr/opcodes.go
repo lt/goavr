@@ -257,10 +257,10 @@ var OpCodeLookUpTable = []OpCode{
 	},
 	OpCode{
 		mnemonic: "ijmp",
-		mask: 0xffff,
-		value: 0x9409,
-		family: Branches,
-		label: INSN_IJMP,
+		mask:     0xffff,
+		value:    0x9409,
+		family:   Branches,
+		label:    INSN_IJMP,
 	},
 	OpCode{
 		mnemonic: "rcall",
@@ -556,6 +556,13 @@ var OpCodeLookUpTable = []OpCode{
 		family:   Arithmetic,
 		label:    INSN_MUL,
 	},
+	OpCode{
+		mnemonic: "sbrs",
+		mask:     0xfe00,
+		value:    0xfe00,
+		family:   Branches,
+		label:    INSN_SBRS,
+	},
 	// =======
 	// Things that load stuff from data space or program memory into registers
 	// These are tricky. the q values are interpolated into the other bits.
@@ -591,12 +598,40 @@ var OpCodeLookUpTable = []OpCode{
 		family:   Transfers,
 		label:    INSN_LDXM,
 	},
-	// LD Rd, Z
 	// LD Rd, Z+
+	OpCode{
+		mnemonic: "ldz+",
+		mask:     0xfe0f,
+		value:    0x9001,
+		family:   Transfers,
+		label:    INSN_LDZP,
+	},
 	// LD Rd, -Z
-	// LD Rd, Y
+	OpCode{
+		mnemonic: "stz-",
+		mask:     0xfe0f,
+		value:    0x9002,
+		family:   Transfers,
+		label:    INSN_LDZM,
+	},
 	// LD Rd, Y+
+	OpCode{
+		mnemonic: "ldy+",
+		mask:     0xfe0f,
+		value:    0x9009,
+		family:   Transfers,
+		label:    INSN_LDYP,
+	},
 	// LD Rd, -Y
+	OpCode{
+		mnemonic: "ldy-",
+		mask:     0xfe0f,
+		value:    0x900a,
+		family:   Transfers,
+		label:    INSN_LDYM,
+	},
+	// LD Rd, Y
+	// LD Rd, Z
 	// LDD Rd, Y+q
 	// LDD Rd, Z+q
 	OpCode{
@@ -633,19 +668,6 @@ var OpCodeLookUpTable = []OpCode{
 		family:   Transfers,
 		label:    INSN_STXM,
 	},
-	// ST Z, Rr
-	// STD Y+q, Rr
-	// STD Z+q, Rr
-	OpCode{
-		mnemonic: "std",
-		mask:     0xde00,
-		value:    0x8200,
-		family:   Transfers,
-		// label set later
-	},
-/*
-    // I don't think these are in the 9200 range. Dunno how I got this value.
-    // 10 Apr 2015
 	// ST Y+, Rr
 	OpCode{
 		mnemonic: "sty+",
@@ -678,7 +700,17 @@ var OpCodeLookUpTable = []OpCode{
 		family:   Transfers,
 		label:    INSN_STZM,
 	},
-*/
+	// ST Z, Rr
+	// ST Y, Rr
+	// STD Y+q, Rr
+	// STD Z+q, Rr
+	OpCode{
+		mnemonic: "std",
+		mask:     0xde00,
+		value:    0x8200,
+		family:   Transfers,
+		// label set later
+	},
 	// ========
 	// LOAD FROM PROGRAM MEMORY
 	// ========
@@ -695,7 +727,7 @@ var OpCodeLookUpTable = []OpCode{
 		mnemonic: "lpmz+",
 		mask:     0xfe0f,
 		value:    0x9005,
-		family:   Transfers,		
+		family:   Transfers,
 		label:    INSN_LPMZP,
 	},
 	OpCode{
@@ -725,16 +757,16 @@ var OpCodeLookUpTable = []OpCode{
 	},
 	OpCode{
 		mnemonic: "jmp",
-		mask: 0xfe0e,
-		value: 0x940c,
-		family: Branches,
-		label: INSN_JMP,
+		mask:     0xfe0e,
+		value:    0x940c,
+		family:   Branches,
+		label:    INSN_JMP,
 	},
 	OpCode{
 		mnemonic: "call",
-		mask: 0xfe0e,
-		value: 0x940e,
-		family: Branches,
-		label: INSN_CALL,
+		mask:     0xfe0e,
+		value:    0x940e,
+		family:   Branches,
+		label:    INSN_CALL,
 	},
 }

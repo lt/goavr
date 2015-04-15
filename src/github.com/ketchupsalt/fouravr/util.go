@@ -2,8 +2,14 @@ package main
 
 import (
 	"debug/elf"
+	"encoding/hex"
 	"fmt"
 )
+
+var cSize int = 2
+var pc = 0
+var data []byte
+var programEnd int16
 
 func b2u16big(in []byte) uint16 { return (uint16(in[0]) << 8) | uint16(in[1]) }
 
@@ -21,8 +27,9 @@ func check(e error) {
 	}
 }
 
-func getExecutableStuff(file *elf.File) {
+func getStuff(file *elf.File) {
 	var x int
+	// get executable stuff
 	for i, s := range file.Sections {
 		if s.SectionHeader.Name == ".text" {
 			x = i
@@ -31,6 +38,25 @@ func getExecutableStuff(file *elf.File) {
 	ret, err := file.Sections[x].Data()
 	check(err)
 	data = append(data, ret...)
+	// get the location of the last instruction.
+	programEnd = b2i16little(data[len(data)-2:len(data)])
+	// get data stuff
+	for i, s := range file.Sections {
+		if s.SectionHeader.Name == ".data" {
+			x = i
+		}
+	}
+	ret, err = file.Sections[x].Data()
+	check(err)
+	data = append(data, ret...)
+}
+
+func dissectExecutable(file *elf.File) {
+	for i, s := range file.Sections {
+		dd, _ := file.Sections[i].Data()
+		fmt.Printf("Section %d (%v)\n", i, s.SectionHeader.Name)
+		fmt.Println(hex.Dump(dd))
+	}
 }
 
 func pop(n int) []byte {
@@ -53,10 +79,9 @@ func chunkle(blob []byte, csize int) [][]byte {
 	return fin
 }
 
-
 func printMnemonic(label int) {
 	ret := fmt.Sprintf("I am %d\n", label)
-	for _, op := range(OpCodeLookUpTable) {
+	for _, op := range OpCodeLookUpTable {
 		if op.label == label {
 			ret = op.mnemonic
 		}
@@ -66,7 +91,7 @@ func printMnemonic(label int) {
 
 func printRegs(b [32]uint8) {
 	var ret []string
-	for i, v := range(b) {
+	for i, v := range b {
 		ret = append(ret, fmt.Sprintf("r%d[%d]", i, v))
 	}
 	fmt.Println("Registers:")

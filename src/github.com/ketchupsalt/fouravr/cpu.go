@@ -78,11 +78,10 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_IJMP:
 		// PC <- Z(15:0)
-		z := int16((cpu.regs[31] << 4)) | int16(cpu.regs[30])
-		fmt.Printf("%.16b\n", z)
+		z := b2i16little([]byte{cpu.regs[30],cpu.regs[31]})
 		// Because the PC gets incremented automatically
-		// XXX TODO(ERIN) does 2 need to be subtracted from this?
-		cpu.pc = z //- 2
+		// we need to subtract 2 here.
+		cpu.pc = z - 2
 		return
 	case INSN_RJMP:
 		// PC <- PC + k + 1
@@ -149,8 +148,13 @@ func (cpu *CPU) Execute(i Instr) {
 		// Rd <- Rd^Rr
 		cpu.regs[i.dest] = cpu.regs[i.dest] ^ cpu.regs[i.source]
 		return
+	case INSN_IN:
+		// Rd <- I/O(A)
+		cpu.regs[i.dest] = cpu.dmem[i.ioaddr]
+		return
 	case INSN_OUT:
-		// I/O port <- Rr
+		// I/O(A) <- Rr
+		cpu.dmem[i.ioaddr] = cpu.regs[i.source]
 		return
 	case INSN_LDI:
 		// Rd <- K
@@ -208,6 +212,14 @@ func (cpu *CPU) Execute(i Instr) {
 			cpu.pc += 2
 		}
 		return
+	case INSN_SBRS:
+		// if Rr(b) = 1 then PC += 2
+		s := i.registerBit - 1
+		r := (cpu.regs[i.source] & bitMasks[i.registerBit]) >> s
+		if r == 1 {
+			cpu.pc += 2
+		}
+		return
 	case INSN_STS:
 		// (k) <- Rr
 		cpu.dmem[i.k16] = cpu.regs[i.source]
@@ -226,14 +238,13 @@ func (cpu *CPU) Execute(i Instr) {
 		cpu.regs[i.dest+1] = cpu.regs[i.dest+1] + kh
 		return
 	case INSN_SBIW:
-		fmt.Println(i)
 		// Rd+1:Rd <- Rd+1:Rd - K
 		kl := i.kdata & 0x0f
 		kh := (i.kdata & 0xf0) >> 4
 		// XXX TODO(ERIN) See ADIW
 		cpu.regs[i.dest] = cpu.regs[i.dest] - kl
 		cpu.regs[i.dest+1] = cpu.regs[i.dest+1] - kh
-		r := b2u16little([]byte{cpu.regs[i.dest+1],cpu.regs[i.dest]} )
+		r := b2u16little([]byte{cpu.regs[i.dest],cpu.regs[i.dest+1]} )
 		if r == 0 {
 			cpu.set_z()
 		} else {
@@ -283,7 +294,20 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_COM:
 		// Rd <- ^Rd
-		cpu.regs[i.dest] = ^cpu.regs[i.dest]
+		r := ^cpu.regs[i.dest]
+		cpu.regs[i.dest] = r
+		cpu.clear_v()
+		cpu.set_c()
+		if ((r & 0x80) >> 7) == 1 {
+			cpu.set_n()
+		} else {
+			cpu.clear_n()
+		}
+		if r == 0 {
+			cpu.set_z()
+		} else {
+			cpu.clear_z()
+		}
 		return
 	case INSN_CP:
 		// Rd - Rr
@@ -311,6 +335,11 @@ func (cpu *CPU) Execute(i Instr) {
 		if r != 0 {
 			cpu.clear_z()
 		}
+		if ((r & 0x80) >> 7) == 1 {
+			cpu.set_n()
+		} else {
+			cpu.clear_n()
+		}
 		return
 	case INSN_CPI:
 		// Rd - K
@@ -322,13 +351,11 @@ func (cpu *CPU) Execute(i Instr) {
 			cpu.clear_c()
 		}
 		r := cpu.regs[i.dest] - i.kdata
-
 		if r == 0 {
 			cpu.set_z()
 		} else {
 			cpu.clear_z()
 		}
-
 		if ((r & 0x80) >> 7) == 1 {
 			cpu.set_n()
 		} else {
@@ -356,39 +383,35 @@ func (cpu *CPU) Execute(i Instr) {
 			cpu.clear_n()
 		}
 		return
-	case INSN_IN:
-		// Rd <- I/O(A)
-		cpu.regs[i.dest] = cpu.dmem[i.ioaddr]
-		return
 	case INSN_LDDY:
 		// Rd <- (Y + q)
-		y := b2u16little([]byte{cpu.regs[29], cpu.regs[28]})
+		y := b2u16little([]byte{cpu.regs[28], cpu.regs[29]})
 		cpu.regs[i.dest] = cpu.dmem[y + i.offset]
 		return
 	case INSN_LDDZ:
 		// Rd <- (Z + q)
-		z := b2u16little([]byte{cpu.regs[31], cpu.regs[30]})
+		z := b2u16little([]byte{cpu.regs[30], cpu.regs[31]})
 		cpu.regs[i.dest] = cpu.dmem[z + i.offset]
 		return
 	case INSN_LDX:
 		// Rd <- (X)
-		x := b2u16little([]byte{cpu.regs[27], cpu.regs[26]})
+		x := b2u16little([]byte{cpu.regs[26], cpu.regs[27]})
 		cpu.regs[i.dest] = cpu.dmem[x]
 		return
 	case INSN_LDXP:
 		// Rd <- (X), X <- X + 1
-		x := b2u16little([]byte{cpu.regs[27], cpu.regs[26]})
+		x := b2u16little([]byte{cpu.regs[26], cpu.regs[27]})
 		cpu.regs[i.dest] = cpu.dmem[x]
 		cpu.regs[26] += 1
 		return
 	case INSN_LDY:
 		// Rd <- (Y)
-		y := b2u16little([]byte{cpu.regs[29], cpu.regs[28]})
+		y := b2u16little([]byte{cpu.regs[28], cpu.regs[29]})
 		cpu.regs[i.dest] = cpu.dmem[y]
 		return
 	case INSN_LDYP:
 		// Rd <- (Y), Y <- Y + 1
-		y := b2u16little([]byte{cpu.regs[29], cpu.regs[28]})
+		y := b2u16little([]byte{cpu.regs[28], cpu.regs[29]})
 		cpu.regs[i.dest] = cpu.dmem[y]
 		// XXX TODO(ERIN) this could overflow into the high
 		// byte someday.
@@ -396,38 +419,44 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_LDYM:
 		// Rd <- (Y), Y <- Y - 1
-		y := b2u16little([]byte{cpu.regs[29], cpu.regs[28]})
-		cpu.regs[i.dest] = cpu.dmem[y]
+		y := b2u16little([]byte{cpu.regs[28], cpu.regs[29]})
+		// pre-decrement
 		cpu.regs[28] -= 1
+		cpu.regs[i.dest] = cpu.dmem[y]
 		return
 	case INSN_LDZ:
 		// Rd <- (Z) (dmem)
-		z := b2u16little([]byte{cpu.regs[31], cpu.regs[30]})
+		z := b2u16little([]byte{cpu.regs[30], cpu.regs[31]})
 		cpu.regs[i.dest] = cpu.dmem[z]
 		return
 	case INSN_LDZP:
-		// Rd <- (Z) (dmem), Z <= Z - 1
-		z := b2u16little([]byte{cpu.regs[31], cpu.regs[30]})
+		// Rd <- (Z) (dmem), Z <- Z - 1
+		z := b2u16little([]byte{cpu.regs[30], cpu.regs[31]})
 		cpu.regs[i.dest] = cpu.dmem[z]
+		// post-decrement
 		// XXX TODO(ERIN) this could overflow into the high
 		// byte some
 		cpu.regs[30] += 1
 		return
 		case INSN_LDZM:
 		// Rd <- (Z) (dmem), Z <- Z - 1
-		z := b2u16little([]byte{cpu.regs[31], cpu.regs[30]})
-		cpu.regs[i.dest] = cpu.dmem[z]
+		z := b2u16little([]byte{cpu.regs[30], cpu.regs[31]})
+		// pre-decrement
 		cpu.regs[30] -= 1
+		cpu.regs[i.dest] = cpu.dmem[z]
 		return
 	case INSN_LPMZ:
 		// Rd <- (Z) (imem)
-		z := b2u16little([]byte{cpu.regs[31], cpu.regs[30]})
+		z := b2i16little([]byte{cpu.regs[30], cpu.regs[31]})
 		cpu.regs[i.dest] = cpu.imem[z]
 		return
 	case INSN_LPMZP: 
 		// Rd <- (Z), Z <- Z + 1 (imem)
-		z := (cpu.regs[31] << 8) | cpu.regs[30]
+		//z := int16(cpu.regs[31] << 8) | int16(cpu.regs[30])
+		z := b2i16little([]byte{cpu.regs[30], cpu.regs[31]})
+		fmt.Printf("char found at %.4x:\t%.4x\n", z, cpu.imem[z])
 		cpu.regs[i.dest] = cpu.imem[z]
+		// post-increment
 		cpu.regs[30] += 1
 		return
 	case INSN_LPM:
@@ -499,7 +528,7 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_POP:
 		// Rd <- Stack
-		cpu.regs[i.dest] = cpu.dmem[cpu.sp -1]
+		cpu.regs[i.dest] = cpu.dmem[cpu.sp]
 		cpu.sp += 1
 		return
 	case INSN_PUSH:
@@ -524,7 +553,6 @@ func (cpu *CPU) Execute(i Instr) {
 		// PC <- Stack
 		low := cpu.dmem[cpu.sp]
 		high := cpu.dmem[cpu.sp + 1]
-		fmt.Printf("%.4x %.4x\n", high, low)
 		cpu.pc = b2i16little([]byte{high, low})
 		cpu.sp += 2
 		return
@@ -582,7 +610,7 @@ func (cpu *CPU) Execute(i Instr) {
 		// Rd <- Rd - K
 		r := cpu.regs[i.dest] - i.kdata
 		cpu.regs[i.dest] = r
-		if r != 0 {
+		if r == 0 {
 			cpu.set_z()
 		} else {
 			cpu.clear_z()
@@ -592,19 +620,29 @@ func (cpu *CPU) Execute(i Instr) {
 		} else {
 			cpu.clear_c()
 		}
+		if (r & 0x80 >> 8) == 1 {
+			cpu.set_n()
+		} else {
+			cpu.clear_n()
+		}
 		return
 	case INSN_SBCI:
 		// Rd <- Rd - K - C
 		c := uint8(cpu.sr & 0x01)
+		if (i.kdata + c) > cpu.regs[i.dest] {
+			cpu.set_c()
+		} else {
+			cpu.clear_c()
+		}
 		r := cpu.regs[i.dest] - i.kdata - c
 		cpu.regs[i.dest] = r
 		if r == 0 {
 			cpu.clear_z()
 		}
-		if (i.kdata + c) > r {
-			cpu.set_c()
+		if (r & 0x80 >> 8) == 1 {
+			cpu.set_n()
 		} else {
-			cpu.clear_c()
+			cpu.clear_n()
 		}
 		return
 	case INSN_SEI:
@@ -613,14 +651,30 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_SUB:
 		// Rd <- Rd - Rr
-		cpu.regs[i.dest] = cpu.regs[i.dest] - cpu.regs[i.source]
+		r := cpu.regs[i.dest] - cpu.regs[i.source]
+		cpu.regs[i.dest] = r
+		if r == 0 {
+			cpu.set_z()
+		} else {
+			cpu.clear_z()
+		}
+		if i.kdata > r {
+			cpu.set_c()
+		} else {
+			cpu.clear_c()
+		}
+		if (r & 0x80 >> 8) == 1 {
+			cpu.set_n()
+		} else {
+			cpu.clear_n()
+		}
 		return
 	case INSN_STXP:
 		// (X) <- Rr, X <- X + 1
 		// 26 = low byte, 27 = high byte
-		x := int16(cpu.regs[27])<<8 | int16(cpu.regs[26])
-		fmt.Printf("dmem: %.4x\t", x)
+		x := b2i16little([]byte{cpu.regs[26], cpu.regs[27]})
 		cpu.dmem[x] = cpu.regs[i.source]
+		fmt.Printf("char at %.4x:\t%.4x\n", x, cpu.dmem[x])
 		cpu.regs[26] += 1
 		return
 	case INSN_MUL:
