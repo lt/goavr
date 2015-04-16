@@ -8,9 +8,7 @@ import (
 )
 
 var fileName string
-var dumpMem, dumpProg bool 
-
-
+var dumpMem, dumpProg bool
 
 func init() {
 	flag.StringVar(&fileName, "f", fileName, "File path, yo")
@@ -28,23 +26,21 @@ func main() {
 		// JMP
 		// d := []byte{0x0c, 0x94, 0xc5, 0xbb}
 		// ANDI
-		cpu.imem.LoadProgram([]byte{0x27, 0x7f})		
+		cpu.imem.LoadProgram([]byte{0x27, 0x7f})
 	} else {
-
 		_, err := os.Stat(fileName)
-		if err != nil {
-			file, _ := elf.Open(fileName)
-		} else {
-			fmt.Printf("File %s not found.", fileName)
+		if os.IsNotExist(err) {
+			fmt.Printf("File %s not found.\n", fileName)
 			os.Exit(2)
-		}
-		
-		if dumpProg == true {
-			dissectExecutable(file)
-			os.Exit(0)
 		} else {
-			getStuff(file)
-			cpu.imem.LoadProgram(data)
+			file, _ := elf.Open(fileName)
+			if dumpProg == true {
+				dissectExecutable(file)
+				os.Exit(0)
+			} else {
+				getStuff(file)
+				cpu.imem.LoadProgram(data)
+			}
 		}
 	}
 
@@ -61,7 +57,7 @@ func main() {
 	// Manually setting the program counter to the start of
 	// the stuff I actually want to step through.
 	cpu.pc = 0x0026
-	
+
 	// RAMEND is typically 0x1ff. Compiler leaves a preamble
 	// in the decompiled code that is supposed to initialize
 	// the stack pointer, but I can't yet figure out where,
@@ -69,8 +65,8 @@ func main() {
 	cpu.sp = 0x1ff
 
 	// Still don't know how to exit the program.
-	
-	for  cpu.pc != programEnd  {
+
+	for cpu.pc != programEnd {
 		cpu.Interactive()
 	}
 }
