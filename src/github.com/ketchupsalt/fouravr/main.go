@@ -30,8 +30,15 @@ func main() {
 		// ANDI
 		cpu.imem.LoadProgram([]byte{0x27, 0x7f})		
 	} else {
-		file, _ := elf.Open(fileName)
 
+		_, err := os.Stat(fileName)
+		if err != nil {
+			file, _ := elf.Open(fileName)
+		} else {
+			fmt.Printf("File %s not found.", fileName)
+			os.Exit(2)
+		}
+		
 		if dumpProg == true {
 			dissectExecutable(file)
 			os.Exit(0)
@@ -46,8 +53,6 @@ func main() {
 		os.Exit(0)
 	}
 
-
-	
 	//mi := dissAssemble(pop(2))
 	// sample JMP instruction 94 0c bb c5
 	// 1001 0100 0000 1100 1011 1011 1100 0101
