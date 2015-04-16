@@ -71,6 +71,7 @@ func (cpu *CPU) Step() {
 }
 
 func (cpu *CPU) Interactive() {
+		fmt.Println("Type ? for help.")
 	for {
 		prompt := bufio.NewReader(os.Stdin)
 		fmt.Print("$> ")
@@ -82,6 +83,15 @@ func (cpu *CPU) Interactive() {
 		r := strings.Split(response, "\n")
 
 		switch r[0] {
+		case "?":
+			fmt.Println("g to run the whole program")
+			fmt.Println("q to quit")
+			fmt.Println("s to single step")
+			fmt.Println("j prompts for a pc (in hex)")
+			fmt.Println("d dumps the data memory")
+			fmt.Println("p dumps the program mempory")
+			fmt.Println("return jumps 5 instructions")
+			fmt.Println("any number /n/ jumps /n/ instructions")
 		case "g":
 			for {
 				cpu.Step()
@@ -107,6 +117,8 @@ func (cpu *CPU) Interactive() {
 			cpu.pc = 0x0026
 		case "d":
 			fmt.Println(cpu.dmem.Dump())
+		case "p":
+			fmt.Println(cpu.imem.Dump())
 		case "j":
 			var o int16
 			fmt.Println("Enter pc:")
@@ -122,7 +134,10 @@ func (cpu *CPU) Interactive() {
 				n = 5
 			} else {
 				n, err = strconv.Atoi(r[0])
-				check(err)
+				if err != nil {
+					fmt.Println("Command not recognized.")
+					break
+				}
 			}
 			for i := 1; i < (n + 1); i++ {
 				cpu.Step()
@@ -316,6 +331,11 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_SBIW:
 		// Rd+1:Rd <- Rd+1:Rd - K
+		if i.kdata > cpu.regs[i.dest] {
+			cpu.set_c()
+		} else {
+			cpu.clear_c()
+		}
 		// low byte
 		x := uint16(cpu.regs[i.dest])
 		// high byte
