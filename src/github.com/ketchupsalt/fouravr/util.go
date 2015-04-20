@@ -4,12 +4,11 @@ import (
 	"debug/elf"
 	"encoding/hex"
 	"fmt"
+	//"os"
 )
 
 var cSize int = 2
 var pc = 0
-var data []byte
-var programEnd int16
 
 func b2u16big(in []byte) uint16 { return (uint16(in[0]) << 8) | uint16(in[1]) }
 
@@ -25,7 +24,7 @@ func b2i32little(in []byte) int32 { return (int32(in[1]) << 8) | int32(in[0]) }
 
 func check(e error) {
 	if e != nil {
-		panic(e)
+		fmt.Println(e)
 	}
 }
 
@@ -100,4 +99,13 @@ func printRegs(b [32]uint8) {
 	fmt.Println(ret[0:17])
 	fmt.Println(ret[17:32])
 
+}
+
+func handlePanic() {
+	if r := recover(); r != nil {
+		if e, ok := r.(error); ok {
+			fmt.Println(e)
+			return
+		} 
+	}
 }

@@ -8,6 +8,8 @@ import (
 	"strings"
 )
 
+var programEnd int16
+
 // AVR indirect pointer registers.
 // X = (26,27), Y = (28,29, and Z = (30,31)
 // XXX TODO(Erin) may be a better way to do this?
@@ -63,15 +65,16 @@ Golang Logical Operators: (because I'm tired of looking this shit up)
 
 func (cpu *CPU) Step() {
 	fmt.Printf("pc: %.4x\tsr: %.8b\tsp: %.4x\t\n", cpu.pc, cpu.sr, cpu.sp)
-	mi := cpu.imem.Fetch()
-	cpu.Execute(dissAssemble(mi))
+	//defer handlePanic()
+	cpu.imem.Fetch()
+	cpu.Execute(dissAssemble(current))
 	printRegs(cpu.regs)
 	fmt.Println("Stack: ", cpu.dmem[cpu.sp:0x01ff])
 	fmt.Println("---------------------------------")
 }
 
 func (cpu *CPU) Interactive() {
-		fmt.Println("Type ? for help.")
+	fmt.Println("Type ? for help.")
 	for {
 		prompt := bufio.NewReader(os.Stdin)
 		fmt.Print("$> ")
@@ -109,7 +112,9 @@ func (cpu *CPU) Interactive() {
 				if b == "x" {
 					break
 				}
-				if cpu.pc == programEnd { break }
+				if cpu.pc == programEnd {
+					break
+				}
 			}
 		case "b":
 			cpu.pc -= 2
@@ -125,7 +130,9 @@ func (cpu *CPU) Interactive() {
 			fmt.Scanf("%x", &o)
 			for cpu.pc < (o + 2) {
 				cpu.Step()
-				if cpu.pc == programEnd { break }
+				if cpu.pc == programEnd {
+					break
+				}
 			}
 		default:
 			var n int
@@ -162,7 +169,7 @@ func (cpu *CPU) Execute(i Instr) {
 	case INSN_IJMP:
 		// PC <- Z(15:0)
 		z := b2i16little([]byte{cpu.regs[30], cpu.regs[31]})
-		cpu.pc = z - 1
+		cpu.pc = z << 1
 		return
 	case INSN_RJMP:
 		// PC <- PC + k + 1
@@ -192,7 +199,7 @@ func (cpu *CPU) Execute(i Instr) {
 		} else {
 			cpu.clear_z()
 		}
-		if (r & 0x80 >> 8) == 1 {
+		if (r & 0x80 >> 7) == 1 {
 			cpu.set_n()
 		} else {
 			cpu.clear_n()
@@ -564,7 +571,7 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_LPM:
 		// R0 <- (Z)
-		z := (cpu.regs[31] << 8) | cpu.regs[30]
+		z := b2i16little([]byte{cpu.regs[30], cpu.regs[31]})
 		cpu.regs[0] = cpu.imem[z]
 		return
 	case INSN_LSR:
@@ -654,9 +661,12 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_RET:
 		// PC <- Stack
-		low := cpu.dmem[cpu.sp]
-		high := cpu.dmem[cpu.sp+1]
-		cpu.pc = b2i16little([]byte{high, low})
+		// r29
+		h := int16(cpu.dmem[cpu.sp])
+		// r 28
+		l := int16(cpu.dmem[cpu.sp+1])
+		cpu.pc = ((h << 8) | l) //<< 1
+		fmt.Printf("%.4x\n", cpu.pc)
 		cpu.sp += 2
 		return
 	case INSN_RETI:
@@ -711,6 +721,11 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_SUBI:
 		// Rd <- Rd - K
+		if i.kdata > cpu.regs[i.dest] {
+			cpu.set_c()
+		} else {
+			cpu.clear_c()
+		}
 		r := cpu.regs[i.dest] - i.kdata
 		cpu.regs[i.dest] = r
 		if r == 0 {
@@ -718,12 +733,7 @@ func (cpu *CPU) Execute(i Instr) {
 		} else {
 			cpu.clear_z()
 		}
-		if i.kdata > r {
-			cpu.set_c()
-		} else {
-			cpu.clear_c()
-		}
-		if (r & 0x80 >> 8) == 1 {
+		if (r & 0x80 >> 7) == 1 {
 			cpu.set_n()
 		} else {
 			cpu.clear_n()
@@ -742,7 +752,7 @@ func (cpu *CPU) Execute(i Instr) {
 		if r == 0 {
 			cpu.clear_z()
 		}
-		if (r & 0x80 >> 8) == 1 {
+		if (r & 0x80 >> 7) == 1 {
 			cpu.set_n()
 		} else {
 			cpu.clear_n()
@@ -766,18 +776,11 @@ func (cpu *CPU) Execute(i Instr) {
 		} else {
 			cpu.clear_c()
 		}
-		if (r & 0x80 >> 8) == 1 {
+		if (r & 0x80 >> 7) == 1 {
 			cpu.set_n()
 		} else {
 			cpu.clear_n()
 		}
-		return
-	case INSN_STXP:
-		// (X) <- Rr, X <- X + 1
-		// 26 = low byte, 27 = high byte
-		x := b2i16little([]byte{cpu.regs[26], cpu.regs[27]})
-		cpu.dmem[x] = cpu.regs[i.source]
-		cpu.regs[26] += 1
 		return
 	case INSN_MUL:
 		// R1h:R0l <- Rx x Rr
@@ -795,39 +798,65 @@ func (cpu *CPU) Execute(i Instr) {
 			cpu.clear_z()
 		}
 		return
-	case INSN_STDY:
-		// (Y) <- Rr
-		y := uint16(cpu.regs[29]<<8) | uint16(cpu.regs[28])
-		cpu.dmem[y+i.offset] = cpu.regs[i.source]
-		return
-	case INSN_STDZ:
-		z := uint16(cpu.regs[31]<<8) | uint16(cpu.regs[30])
-		cpu.dmem[z+i.offset] = cpu.regs[i.source]
-		return
 	case INSN_STX:
-		x := uint16(cpu.regs[27]<<8) | uint16(cpu.regs[26])
+		x := uint16(cpu.regs[27])<<8 | uint16(cpu.regs[26])
 		cpu.dmem[x] = cpu.regs[i.source]
 		return
+	case INSN_STXP:
+		// (X) <- Rr, X <- X + 1
+		// 26 = low byte, 27 = high byte
+		x :=  uint16(cpu.regs[27])<<8 | uint16(cpu.regs[26])
+		cpu.dmem[x] = cpu.regs[i.source]
+		// post-increment
+		cpu.regs[26] += 1
+		return
 	case INSN_STXM:
-		x := uint16(cpu.regs[27]<<8) | uint16(cpu.regs[26])
-		cpu.dmem[x-1] = cpu.regs[i.source]
+		// pre-decrement
+		cpu.regs[26] -= 1
+		x := uint16(cpu.regs[27])<<8 | uint16(cpu.regs[26])
+		cpu.dmem[x] = cpu.regs[i.source]
 		return
 	case INSN_STY:
-		y := uint16(cpu.regs[27]<<8) | uint16(cpu.regs[26])
+		y := uint16(cpu.regs[29])<<8 | uint16(cpu.regs[28])
 		cpu.dmem[y] = cpu.regs[i.source]
 		return
+	case INSN_STYP:
+		y := uint16(cpu.regs[28])<<8 | uint16(cpu.regs[28])
+		cpu.dmem[y] = cpu.regs[i.source]
+		// post-increment
+		cpu.regs[28] += 1
+		return
+	case INSN_STYM:
+		// pre-decrement
+		cpu.regs[28] -= 1
+		y := uint16(cpu.regs[29])<<8 | uint16(cpu.regs[28])
+		cpu.dmem[y] = cpu.regs[i.source]
+		return
+	case INSN_STDY:
+		// (Y) <- Rr
+		y := uint16(cpu.regs[29]) << 8 | uint16(cpu.regs[28])
+		fmt.Printf("%.4x\n", (y+i.offset))
+		cpu.dmem[y+i.offset] = cpu.regs[i.source]
+		return
 	case INSN_STZ:
-		z := uint16(cpu.regs[27]<<8) | uint16(cpu.regs[26])
+		z := uint16(cpu.regs[31])<<8 | uint16(cpu.regs[30])
 		cpu.dmem[z] = cpu.regs[i.source]
 		return
 	case INSN_STZP:
-		z := uint16(cpu.regs[27]<<8) | uint16(cpu.regs[26])
+		z := uint16(cpu.regs[31])<<8 | uint16(cpu.regs[30])
 		cpu.dmem[z] = cpu.regs[i.source]
+		// post-increment
 		cpu.regs[26] += 1
 		return
 	case INSN_STZM:
-		z := uint16(cpu.regs[27]<<8) | uint16(cpu.regs[26])
-		cpu.dmem[z-1] = cpu.regs[i.source]
+		// pre-decrement
+		cpu.regs[30] -= 1
+		z := uint16(cpu.regs[31])<<8 | uint16(cpu.regs[30])
+		cpu.dmem[z] = cpu.regs[i.source]
+		return
+	case INSN_STDZ:
+		z := uint16(cpu.regs[31]) <<8 | uint16(cpu.regs[30])
+		cpu.dmem[z+i.offset] = cpu.regs[i.source]
 		return
 	default:
 		fmt.Println("I dunno.")

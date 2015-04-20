@@ -291,32 +291,18 @@ var OpCodeLookUpTable = []OpCode{
 		label:    INSN_SBI,
 	},
 	OpCode{
+		mnemonic: "cbi",
+		mask:     0xff00,
+		value:    0x9800,
+		family:   BitWise,
+		label:    INSN_CBI,
+	},
+	OpCode{
 		mnemonic: "cpi",
 		mask:     0xf000,
 		value:    0x3000,
 		family:   Branches,
 		label:    INSN_CPI,
-	},
-	OpCode{
-		mnemonic: "breq",
-		mask:     0xfc07,
-		value:    0xf001,
-		family:   Branches,
-		label:    INSN_BREQ,
-	},
-	OpCode{
-		mnemonic: "subi",
-		mask:     0xf000,
-		value:    0x5000,
-		family:   Arithmetic,
-		label:    INSN_SUBI,
-	},
-	OpCode{
-		mnemonic: "brne",
-		mask:     0xfc07,
-		value:    0xf401,
-		family:   Branches,
-		label:    INSN_BRNE,
 	},
 	OpCode{
 		mnemonic: "cpc",
@@ -326,11 +312,32 @@ var OpCodeLookUpTable = []OpCode{
 		label:    INSN_CPC,
 	},
 	OpCode{
-		mnemonic: "push",
-		mask:     0xfe0f,
-		value:    0x920f,
-		family:   Transfers,
-		label:    INSN_PUSH,
+		mnemonic: "subi",
+		mask:     0xf000,
+		value:    0x5000,
+		family:   Arithmetic,
+		label:    INSN_SUBI,
+	},
+	OpCode{
+		mnemonic: "breq",
+		mask:     0xfc07,
+		value:    0xf001,
+		family:   Branches,
+		label:    INSN_BREQ,
+	},
+	OpCode{
+		mnemonic: "brne",
+		mask:     0xfc07,
+		value:    0xf401,
+		family:   Branches,
+		label:    INSN_BRNE,
+	},
+	OpCode{
+		mnemonic: "brcs",
+		mask:     0xfc07,
+		value:    0xf000,
+		family:   Branches,
+		label:    INSN_BRCS,
 	},
 	OpCode{
 		mnemonic: "sbci",
@@ -382,11 +389,11 @@ var OpCodeLookUpTable = []OpCode{
 		label:    INSN_OR,
 	},
 	OpCode{
-		mnemonic: "cbi",
-		mask:     0xff00,
-		value:    0x9800,
-		family:   BitWise,
-		label:    INSN_CBI,
+		mnemonic: "push",
+		mask:     0xfe0f,
+		value:    0x920f,
+		family:   Transfers,
+		label:    INSN_PUSH,
 	},
 	OpCode{
 		mnemonic: "pop",
@@ -422,13 +429,6 @@ var OpCodeLookUpTable = []OpCode{
 		value:    0x1000,
 		family:   Branches,
 		label:    INSN_CPSE,
-	},
-	OpCode{
-		mnemonic: "brcs",
-		mask:     0xfc07,
-		value:    0xf000,
-		family:   Branches,
-		label:    INSN_BRCS,
 	},
 	OpCode{
 		mnemonic: "sbiw",
@@ -632,11 +632,11 @@ var OpCodeLookUpTable = []OpCode{
 	},
 	// LD Rd, Y
 	// LD Rd, Z
-	// LDD Rd, Y+q
+	// Rd, Y+q
 	// LDD Rd, Z+q
 	OpCode{
 		mnemonic: "ldd",
-		mask:     0xde00,
+		mask:     0xd000,
 		value:    0x8000,
 		family:   Transfers,
 		// Label set elsewhere

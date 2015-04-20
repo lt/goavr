@@ -28,9 +28,12 @@ func main() {
 		// ANDI
 		cpu.imem.LoadProgram([]byte{0x27, 0x7f})
 	} else {
-		_, err := os.Stat(fileName)
+		r, err := os.Stat(fileName)
 		if os.IsNotExist(err) {
 			fmt.Printf("File %s not found.\n", fileName)
+			os.Exit(2)
+		} else if r.IsDir() {
+			fmt.Printf("%s is a directory, dummy.\n", fileName)
 			os.Exit(2)
 		} else {
 			file, _ := elf.Open(fileName)
@@ -56,7 +59,7 @@ func main() {
 
 	// Manually setting the program counter to the start of
 	// the stuff I actually want to step through.
-	cpu.pc = 0x0026
+	cpu.pc = 0
 
 	// RAMEND is typically 0x1ff. Compiler leaves a preamble
 	// in the decompiled code that is supposed to initialize

@@ -1,7 +1,13 @@
 package main
 
 
-import 	"encoding/hex"
+import (
+	"encoding/hex"
+	//"fmt"
+)
+
+var data []byte
+var current []byte
 
 // 4096 max size of program memory.
 // Both data memory and program memory inherit
@@ -12,10 +18,9 @@ type Memory [2048]byte
 // Use Fetch() for grabbing 2 bytes from program memory.
 // Increments the program counter.
 
-func (mem *Memory) Fetch() []byte {
-	ret := mem[cpu.pc:(cpu.pc+2)]
+func (mem *Memory) Fetch() {
+	current = mem[cpu.pc:(cpu.pc+2)]
 	cpu.pc += 2
-	return ret
 }
 
 // Use Read() for reading a single byte from data memory

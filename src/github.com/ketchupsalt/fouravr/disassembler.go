@@ -120,14 +120,14 @@ func dissAssemble(b []byte) Instr {
 	case INSN_STS:
 		// 1001 001d dddd 0000 kkkk kkkk kkkk kkkk
 		inst.dest = ((b[1]&0x01)<<4 | ((b[0] & 0xf0) >> 4))
-		c := pop(2)
-		inst.k16 = b2i16little(c)
+		cpu.imem.Fetch()
+		inst.k16 = b2i16little(current)
 		fmt.Printf("%.4x\tsts\t0x%.4x, r%d\n", b2u16big(b), inst.k16, inst.dest)
 		return inst
 	case INSN_LDS:
 		inst.dest = ((b[1]&0x01)<<4 | ((b[0] & 0xf0) >> 4))
-		c := cpu.imem.Fetch()
-		inst.k16 = b2i16little(c)
+		cpu.imem.Fetch()
+		inst.k16 = b2i16little(current)
 		fmt.Printf("%.4x\tlds\tr%d, 0x%.4x\n", b2u16big(b), inst.dest, inst.k16)
 		return inst
 	case INSN_IJMP:
@@ -139,8 +139,8 @@ func dissAssemble(b []byte) Instr {
 		var k1, k2, k3 uint32
 		k1 = uint32(b[1]&0x01) << 20
 		k2 = uint32(b[0]&0xf0) << 12
-		c := cpu.imem.Fetch()
-		k3 = uint32(c[1])<<8 | uint32(c[0])
+		cpu.imem.Fetch()
+		k3 = uint32(current[1])<<8 | uint32(current[0])
 		inst.k32 = k1 | k2 | k3
 		fmt.Printf("%.4x\tjmp\t0x%.8x\t;%d\n", b2u16big(b), inst.k32, inst.k32)
 		return inst
@@ -435,11 +435,13 @@ func dissAssemble(b []byte) Instr {
 	case INSN_STDY:
 		// 1001 001r rrrr 1001
 		inst.source = ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
+		inst.offset = m.offset
 		fmt.Printf("%.4x\tstd\tY+%d, r%d\n", b2u16big(b), inst.offset, inst.source)
 		return inst
 	case INSN_STDZ:
 		// 10q0 qq1r rrrr 0qqq
 		inst.source = ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
+		inst.offset = m.offset
 		fmt.Printf("%.4x\tstd\tZ+%d, r%d\n", b2u16big(b), inst.offset, inst.source)
 		return inst
 	case INSN_STX:
@@ -459,9 +461,19 @@ func dissAssemble(b []byte) Instr {
 		fmt.Printf("%.4x\tst\t-X, r%d\n", b2u16big(b), inst.source)
 		return inst
 	case INSN_STY:
-		//1001 001r rrrr 1001
+		//1001 001r rrrr 1000
 		inst.source = ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
 		fmt.Printf("%.4x\tst\tY, r%d\n", b2u16big(b), inst.source)
+		return inst
+	case INSN_STYP:
+		//1001 001r rrrr 1001
+		inst.source = ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
+		fmt.Printf("%.4x\tst\tY+, r%d\n", b2u16big(b), inst.source)
+		return inst
+	case INSN_STYM:
+		//1001 001r rrrr 1010
+		inst.source = ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
+		fmt.Printf("%.4x\tst\t-Y, r%d\n", b2u16big(b), inst.source)
 		return inst
 	case INSN_STZ:
 		// 1000 001r rrrr 0000
@@ -506,9 +518,9 @@ func lookUp(raw []byte) OpCode {
 			op = entry
 			switch entry.mnemonic {
 			case "std":
-				return deConvoluter(b, op)
+				return deConvoluter(raw, op)
 			case "ldd":
-				return deConvoluter(b, op)
+				return deConvoluter(raw, op)
 			}
 			return op
 		} else {
@@ -518,9 +530,16 @@ func lookUp(raw []byte) OpCode {
 	return op
 }
 
-func deConvoluter(b uint16, op OpCode) OpCode {
-	x := b & 0xd208
-	offset := b & 0x2c07
+func getOffset(b []byte) uint16 {
+	o0 := ((b[1] & 0x20) << 1) | ((b[1] & 0x0c) >> 2)
+	o1 := b[0] & 0x07
+	o := o0 << 3 | o1
+	return uint16(o)
+}
+
+func deConvoluter(b []byte, op OpCode) OpCode {
+	x := b2u16little(b) & uint16(0xd208)
+	offset := getOffset(b)
 	switch x {
 	case 0x8000:
 		if offset == 0 {
@@ -560,7 +579,7 @@ func deConvoluter(b uint16, op OpCode) OpCode {
 		}
 	default:
 		op.mnemonic = "Unknown"
-		op.value = b
+		op.value = b2u16little(b)
 	}
 	return op
 }
