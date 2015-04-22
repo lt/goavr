@@ -61,12 +61,6 @@ func main() {
 	// the stuff I actually want to step through.
 	cpu.pc = 0
 
-	// RAMEND is typically 0x1ff. Compiler leaves a preamble
-	// in the decompiled code that is supposed to initialize
-	// the stack pointer, but I can't yet figure out where,
-	// so I am setting this manually.
-	cpu.sp = 0x1ff
-
 	// Still don't know how to exit the program.
 
 	for cpu.pc != programEnd {

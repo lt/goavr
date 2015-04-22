@@ -1,9 +1,8 @@
 package main
 
-
 import (
 	"encoding/hex"
-	//"fmt"
+	"fmt"
 )
 
 var data []byte
@@ -19,7 +18,7 @@ type Memory [2048]byte
 // Increments the program counter.
 
 func (mem *Memory) Fetch() {
-	current = mem[cpu.pc:(cpu.pc+2)]
+	current = mem[cpu.pc:(cpu.pc + 2)]
 	cpu.pc += 2
 }
 
@@ -31,7 +30,7 @@ func (mem *Memory) Read(loc int) byte {
 // Loads the executable stuff into program memory.
 
 func (mem *Memory) LoadProgram(data []byte) {
-	for i, b := range(data) {
+	for i, b := range data {
 		mem[i] = b
 	}
 }
@@ -40,8 +39,31 @@ func (mem *Memory) Dump() string {
 	return hex.Dump(mem[0:])
 }
 
-
 // Here but unused.
 func (mem *Memory) Store(i int16, b byte) {
 	mem[i] = b
+}
+
+func (mem *Memory) printRegs() {
+	var regs []string
+	for i := 0; i < 32; i++ {
+		regs = append(regs, fmt.Sprintf("r%d[%.2x]", i, mem[i]))
+	}
+	fmt.Println("Registers:")
+	fmt.Printf("%v\n", regs[0:13])
+	fmt.Printf("%v\n", regs[13:26])
+	fmt.Printf("X:\t%v\t%v\n", regs[26], regs[27])
+	fmt.Printf("Y:\t%v\t%v\n", regs[28], regs[29])
+	fmt.Printf("Z:\t%v\t%v\n", regs[30], regs[31])
+}
+
+func (mem *Memory) printStack() {
+	var stack []string
+	if cpu.sp.current() != 0 {
+		for _, v := range mem[cpu.sp.current():0x045f] {
+			stack = append(stack, fmt.Sprintf("%.2x ", v))
+		}
+	}
+	fmt.Println("Stack:")
+	fmt.Println(stack)
 }

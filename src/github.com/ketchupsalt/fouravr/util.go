@@ -22,6 +22,8 @@ func b2u32little(in []byte) uint32 { return (uint32(in[1]) << 8) | uint32(in[0])
 
 func b2i32little(in []byte) int32 { return (int32(in[1]) << 8) | int32(in[0]) }
 
+func u16big2byte(in uint16) []byte { return []byte{byte(in >> 8), byte(in & 0x0f)} }
+
 func check(e error) {
 	if e != nil {
 		fmt.Println(e)
@@ -88,17 +90,6 @@ func printMnemonic(label int) {
 		}
 	}
 	fmt.Printf("%v (%d)\n", ret, label)
-}
-
-func printRegs(b [32]uint8) {
-	var ret []string
-	for i, v := range b {
-		ret = append(ret, fmt.Sprintf("r%d[%d]", i, v))
-	}
-	fmt.Println("Registers:")
-	fmt.Println(ret[0:17])
-	fmt.Println(ret[17:32])
-
 }
 
 func handlePanic() {
