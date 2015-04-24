@@ -60,7 +60,7 @@ func (mem *Memory) printRegs() {
 func (mem *Memory) printStack() {
 	var stack []string
 	if cpu.sp.current() != 0 {
-		for _, v := range mem[cpu.sp.current():0x045f] {
+		for _, v := range mem[(cpu.sp.current() + 1):0x0460] {
 			stack = append(stack, fmt.Sprintf("%.2x ", v))
 		}
 	}

@@ -8,16 +8,14 @@ type StackPointer struct {
 }
 
 func (sp *StackPointer) inc(x uint16) {
-	d := b2u16little([]byte{cpu.dmem[sp.low], cpu.dmem[sp.high]})
-	d += x
+	d := b2u16little([]byte{cpu.dmem[sp.low], cpu.dmem[sp.high]}) + x
 	r := u16big2byte(d)
 	cpu.dmem[sp.high] = r[0]
 	cpu.dmem[sp.low] = r[1]
 }
 
 func (sp *StackPointer) dec(x uint16) {
-	d := b2u16little([]byte{cpu.dmem[sp.low], cpu.dmem[sp.high]})
-	d -= x
+	d := b2u16little([]byte{cpu.dmem[sp.low], cpu.dmem[sp.high]}) - x
 	r := u16big2byte(d)
 	cpu.dmem[sp.high] = r[0]
 	cpu.dmem[sp.low] = r[1]
