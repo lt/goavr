@@ -316,8 +316,8 @@ func (cpu *CPU) Execute(i Instr) {
 		// high byte
 		y := uint16(cpu.dmem[i.dest+1])
 		r := ((y << 8) | x) + uint16(i.kdata)
-		cpu.dmem[i.dest] = uint8(r & 0x00ff)
-		cpu.dmem[i.dest+1] = uint8(r >> 8)
+		cpu.dmem[i.dest] = byte(r & 0x00ff)
+		cpu.dmem[i.dest+1] = byte(r >> 8)
 		if r == 0 {
 			cpu.set_z()
 		} else {
@@ -341,8 +341,8 @@ func (cpu *CPU) Execute(i Instr) {
 		// high byte
 		y := uint16(cpu.dmem[i.dest+1])
 		r := ((y << 8) | x) - uint16(i.kdata)
-		cpu.dmem[i.dest] = uint8(r & 0x00ff)
-		cpu.dmem[i.dest+1] = uint8(r >> 8)
+		cpu.dmem[i.dest] = byte(r & 0x00ff)
+		cpu.dmem[i.dest+1] = byte(r >> 8)
 		if r == 0 {
 			cpu.set_z()
 		} else {
@@ -640,7 +640,7 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_ORI:
 		// Rd <- Rd | K
-		r := cpu.dmem[i.dest] | uint8(i.kdata)
+		r := cpu.dmem[i.dest] | byte(i.kdata)
 		cpu.dmem[i.dest] = r
 		if ((r & 12) >> 7) == 1 {
 			cpu.set_n()
@@ -701,7 +701,7 @@ func (cpu *CPU) Execute(i Instr) {
 		// The C Flag is shifted into bit 7 of Rd.
 		// Bit 0 is shifted into the C Flag.
 		c := (cpu.dmem[i.dest] & 0x80) >> 7
-		r := (cpu.dmem[i.dest] >> 1) | uint8((cpu.dmem[cpu.sr]&0x01)<<7)
+		r := (cpu.dmem[i.dest] >> 1) | byte((cpu.dmem[cpu.sr]&0x01)<<7)
 		cpu.dmem[i.dest] = r
 		if c == 0 {
 			cpu.set_c()
@@ -786,7 +786,7 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_SBCI:
 		// Rd <- Rd - K - C
-		c := uint8(cpu.dmem[cpu.sr] & 0x01)
+		c := byte(cpu.dmem[cpu.sr] & 0x01)
 		if (i.kdata + c) > cpu.dmem[i.dest] {
 			cpu.set_c()
 		} else {
