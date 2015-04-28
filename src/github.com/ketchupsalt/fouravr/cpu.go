@@ -211,19 +211,20 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_ADC:
 		// Rd <- Rd + Rr + C
-		c := uint8(cpu.dmem[cpu.sr] & 0x01)
-		r := cpu.dmem[i.dest] + cpu.dmem[i.source] + c
-		cpu.dmem[i.dest] = r
+		c := uint16(cpu.dmem[cpu.sr] & 0x01)
+		r := uint16(cpu.dmem[i.dest]) + uint16(cpu.dmem[i.source]) + c
+		cpu.dmem[i.dest] = byte(r)
 		if r == 0 {
 			cpu.set_z()
 		} else {
 			cpu.clear_z()
 		}
-		if r > 0xff {
+		if r > 0x00ff {
 			cpu.set_c()
 		} else {
 			cpu.clear_c()
 		}
+		if ((r & 0x0080) >> 7) == 1 { cpu.set_n() } else { cpu.set_n() }
 		return
 	case INSN_EOR:
 		// Rd <- Rd^Rr
@@ -280,8 +281,12 @@ func (cpu *CPU) Execute(i Instr) {
 		// T <- Rd(b)
 		// Stores bit b from Rd to the T Flag in SREG (Status Register).
 		t := cpu.dmem[i.dest] & bitMasks[i.registerBit] >> i.registerBit
-		cpu.dmem[cpu.sr] &= (t << 7)
-		return
+		if t == 1 {
+			cpu.set_t()
+		} else {
+			cpu.clear_t()
+		}
+		return 
 	case INSN_SBRC:
 		// if Rr(b) = 0 then PC += 2
 		r := (cpu.dmem[i.source] & bitMasks[i.registerBit]) >> i.registerBit
@@ -394,11 +399,11 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_COM:
 		// Rd <- ^Rd
-		r := ^cpu.dmem[i.dest]
-		cpu.dmem[i.dest] = r
+		r := 0xff - uint16(cpu.dmem[i.dest])
+		cpu.dmem[i.dest] = byte(r)
 		cpu.clear_v()
 		cpu.set_c()
-		if ((r & 0x80) >> 7) == 1 {
+		if ((r & 0x0080) >> 7) == 1 {
 			cpu.set_n()
 		} else {
 			cpu.clear_n()
@@ -411,16 +416,14 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_CP:
 		// Rd - Rr
-		r := uint16(cpu.dmem[i.dest]) - uint16(cpu.dmem[i.source])
-		// XXX ToDo(ERIN) -- not so sure about the logic for C
-		// "if the absolute value of the contents of Rr is larger than the absolute value of Rd"
-		// means not zero, right?
-		if r != 0 {
-			cpu.clear_z()
-			cpu.set_c()
-		} else {
+		d := uint16(cpu.dmem[i.dest])
+		s := uint16(cpu.dmem[i.source])
+		if s > d { cpu.set_c() } else { cpu.clear_c() }
+		r :=  d - s 
+		if r == 0 {
 			cpu.set_z()
-			cpu.clear_c()
+		} else {
+			cpu.clear_z()
 		}
 		if ((r & 0x0080) >> 7) == 1 {
 			cpu.set_n()
@@ -487,6 +490,11 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_DEC:
 		// Rd <- Rd - 1
+		if cpu.dmem[i.dest] == 0x80 {
+			cpu.set_v()
+		} else {
+			cpu.clear_v()
+		}
 		r := cpu.dmem[i.dest] - 1
 		cpu.dmem[i.dest] = r
 		if r == 0 {
@@ -711,16 +719,41 @@ func (cpu *CPU) Execute(i Instr) {
 			cpu.clear_n()
 		}
 		return
+	case INSN_SUB:
+		// Rd <- Rd - Rr
+		d := cpu.dmem[i.dest]
+		s := cpu.dmem[i.source]
+		r := d - s
+		fmt.Printf("%.4x\t%.4x\t%.4x\n", d, s, r)
+		if s > d {
+			cpu.set_c()
+		} else {
+			cpu.clear_c()
+		}		
+		if r == 0 {
+			cpu.set_z()
+		} else {
+			cpu.clear_z()
+		}
+		if (r & 0x80 >> 7) == 1 {
+			cpu.set_n()
+		} else {
+			cpu.clear_n()
+		}
+		cpu.dmem[i.dest] = r
+		return
 	case INSN_SBC:
 		// Rd = Rd - Rr - C
-		c := uint8(cpu.dmem[cpu.sr] & 0x01)
-		if (cpu.dmem[i.source] + c) > cpu.dmem[i.dest] {
+		d := cpu.dmem[i.dest]
+		s := cpu.dmem[i.source]
+		c := cpu.dmem[cpu.sr] & 0x01
+		r := d - s - c
+		fmt.Printf("%.4x\t%.4x\t%.4x\n", d, s, r)
+		if (s + c) > d {
 			cpu.set_c()
 		} else {
 			cpu.clear_c()
 		}
-		r := cpu.dmem[i.dest] - cpu.dmem[i.source] - c
-		cpu.dmem[i.dest] = r
 		if r != 0 {
 			cpu.clear_z()
 		}
@@ -729,6 +762,7 @@ func (cpu *CPU) Execute(i Instr) {
 		} else {
 			cpu.clear_n()
 		}
+		cpu.dmem[i.dest] = r
 		return
 	case INSN_SUBI:
 		// Rd <- Rd - K
@@ -773,32 +807,12 @@ func (cpu *CPU) Execute(i Instr) {
 		// set global interrupt flag
 		cpu.set_i()
 		return
-	case INSN_SUB:
-		// Rd <- Rd - Rr
-		r := cpu.dmem[i.dest] - cpu.dmem[i.source]
-		cpu.dmem[i.dest] = r
-		if r == 0 {
-			cpu.set_z()
-		} else {
-			cpu.clear_z()
-		}
-		if i.kdata > r {
-			cpu.set_c()
-		} else {
-			cpu.clear_c()
-		}
-		if (r & 0x80 >> 7) == 1 {
-			cpu.set_n()
-		} else {
-			cpu.clear_n()
-		}
-		return
 	case INSN_MUL:
 		// R1h:R0l <- Rx x Rr
 		r := uint16(cpu.dmem[i.dest]) * uint16(cpu.dmem[i.source])
 		fmt.Printf("%.4x\n", r)
-		cpu.dmem[1] = uint8(r & 0xff00 >> 8)
-		cpu.dmem[0] = uint8(r & 0x00ff)
+		cpu.dmem[1] = byte(r & 0xff00 >> 8)
+		cpu.dmem[0] = byte(r & 0x00ff)
 		if (r & 0x8000 >> 15) == 1 {
 			cpu.set_c()
 		} else {
