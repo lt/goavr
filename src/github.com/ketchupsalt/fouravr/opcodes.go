@@ -284,6 +284,20 @@ var OpCodeLookUpTable = []OpCode{
 		label:    INSN_CLI,
 	},
 	OpCode{
+		mnemonic: "clt",
+		mask:     0xffff,
+		value:    0x94e8,
+		family:   BitWise,
+		label:    INSN_CLT,
+	},
+	OpCode{
+		mnemonic: "set",
+		mask:     0xffff,
+		value:    0x9468,
+		family:   BitWise,
+		label:    INSN_SET,
+	},
+	OpCode{
 		mnemonic: "sbi",
 		mask:     0xff00,
 		value:    0x9a00,
@@ -331,6 +345,13 @@ var OpCodeLookUpTable = []OpCode{
 		value:    0xf401,
 		family:   Branches,
 		label:    INSN_BRNE,
+	},
+	OpCode{
+		mnemonic: "brpl",
+		mask:     0xfc07,
+		value:    0xf402,
+		family:   Branches,
+		label:    INSN_BRPL,
 	},
 	OpCode{
 		mnemonic: "brcs",
@@ -548,6 +569,13 @@ var OpCodeLookUpTable = []OpCode{
 		value:    0x940a,
 		family:   Arithmetic,
 		label:    INSN_DEC,
+	},
+	OpCode{
+		mnemonic: "inc",
+		mask:     0xfe0f,
+		value:    0x9403,
+		family:   Arithmetic,
+		label:    INSN_INC,
 	},
 	OpCode{
 		mnemonic: "mul",

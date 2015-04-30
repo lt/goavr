@@ -22,6 +22,12 @@ func dissAssemble(b []byte) Instr {
 	case INSN_CLI:
 		fmt.Printf("%.4x\tcli\n", b2u16big(b))
 		return inst
+	case INSN_CLT:
+		fmt.Printf("%.4x\tclt\n", b2u16big(b))
+		return inst
+	case INSN_SET:
+		fmt.Printf("%.4x\tset\n", b2u16big(b))
+		return inst
 	case INSN_ADC:
 		// 0001 11rd dddd rrrr
 		inst.source = (((b[1]&0x02)>>1)<<4 | (b[0] & 0x0f))
@@ -200,18 +206,6 @@ func dissAssemble(b []byte) Instr {
 		}
 		fmt.Printf("%.4x\tbrcs\t.+%d\n", b2u16big(b), inst.k16)
 		return inst
-	case INSN_BREQ:
-		// Supposed to be -64<k<+63, but avr-objdump doesn't display
-		// these values this way.
-		// 1111 00kk kkkk k001
-		k := (b2u16little(b) & 0x03f8) >> 3
-		if ((k & 0x40) >> 6) == 1 {
-			inst.k16 = int16((k + 0xff80) << 1)
-		} else {
-			inst.k16 = int16(k << 1)
-		}
-		fmt.Printf("%.4x\tbreq\t.%d\n", b2u16big(b), inst.k16)
-		return inst
 	case INSN_BRGE:
 		// 1111 01kk kkkk k100
 		k := (b2u16little(b) & 0x03f8) >> 3
@@ -229,10 +223,34 @@ func dissAssemble(b []byte) Instr {
 		// if it is, the result is negative.
 		if ((k & 0x40) >> 6) == 1 {
 			inst.k16 = int16((k + 0xff80) << 1)
-			fmt.Printf("%.4x\tbrne\t.%d\n", b2u16big(b), inst.k16)
+			fmt.Printf("%.4x\tbrne\t-.%d\n", b2u16big(b), inst.k16)
 		} else {
 			inst.k16 = int16(k << 1)
 			fmt.Printf("%.4x\tbrne\t.+%d\n", b2u16big(b), inst.k16)
+		}
+		return inst
+	case INSN_BREQ:
+		// Supposed to be -64<k<+63, but avr-objdump doesn't display
+		// these values this way.
+		// 1111 00kk kkkk k001
+		k := (b2u16little(b) & 0x03f8) >> 3
+		if ((k & 0x40) >> 6) == 1 {
+			inst.k16 = int16((k + 0xff80) << 1)
+			fmt.Printf("%.4x\tbreq\t-.%d\n", b2u16big(b), inst.k16)
+		} else {
+			inst.k16 = int16(k << 1)
+			fmt.Printf("%.4x\tbreq\t+.%d\n", b2u16big(b), inst.k16)
+		}
+		return inst
+	case INSN_BRPL:
+		// 1111 01kk kkkk k010
+		k := (b2u16little(b) & 0x03f8) >> 3
+		if ((k & 0x40) >> 6) == 1 {
+			inst.k16 = int16((k + 0xff80) << 1)
+			fmt.Printf("%.4x\tbrpl\t.%d\n", b2u16big(b), inst.k16)
+		} else {
+			inst.k16 = int16(k << 1)
+			fmt.Printf("%.4x\tbrpl\t.+%d\n", b2u16big(b), inst.k16)
 		}
 		return inst
 	case INSN_BRTC:
@@ -276,6 +294,11 @@ func dissAssemble(b []byte) Instr {
 		return inst
 	case INSN_DEC:
 		// 1001 010d dddd 1010
+		inst.dest = ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
+		fmt.Printf("%.4x\tdec\tr%d\n", b2u16big(b), inst.dest)
+		return inst
+	case INSN_INC:
+		// 1001 010d dddd 1011
 		inst.dest = ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
 		fmt.Printf("%.4x\tdec\tr%d\n", b2u16big(b), inst.dest)
 		return inst

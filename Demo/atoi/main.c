@@ -1,26 +1,12 @@
-#include <avr/io.h>
 #include <stdio.h>
-
-int myatoi(char *string)
-{
-   int val = 0, digit;
-   char c;
-
-   while ((c = *string++) != 0) {
-       if (c >= '0' && c <= '9')
-           digit = (int) (c - '0');
-       else
-           break;
-
-       val = (val * 10) + digit;
-   }
-
-   return val;
-}
+#include <stdlib.h>
+#include <string.h>
 
 int main() {
-    int x = myatoi("42");
-    char s[4];
-    sprintf(s,"%d", x);
-    return (0);
+    char *s = "4242";
+    int foo = atoi(s);    
+    
+    char str[16];
+    sprintf(str, "Hello, %d!\n", foo);
+    return 0;
 }

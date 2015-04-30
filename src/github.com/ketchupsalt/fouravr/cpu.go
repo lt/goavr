@@ -209,6 +209,14 @@ func (cpu *CPU) Execute(i Instr) {
 		// Clear global interrupt
 		cpu.clear_i()
 		return
+	case INSN_CLT:
+		// Clear global interrupt
+		cpu.clear_t()
+		return
+	case INSN_SET:
+		// Clear global interrupt
+		cpu.set_t()
+		return
 	case INSN_ADC:
 		// Rd <- Rd + Rr + C
 		c := uint16(cpu.dmem[cpu.sr] & 0x01)
@@ -370,7 +378,7 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_BREQ:
 		//if Rd = Rr(Z=1) then PC <- PC + k + 1
-		r := (cpu.dmem[cpu.sr] & bitMasks[7]) >> 7
+		r := (cpu.dmem[cpu.sr] & bitMasks[1]) >> 1
 		if r == 1 {
 			cpu.pc += i.k16
 		}
@@ -390,6 +398,13 @@ func (cpu *CPU) Execute(i Instr) {
 			cpu.pc += i.k16 //+1
 		}
 		return
+	case INSN_BRPL:
+		// if (N = 0) then PC <-  PC + k + 1
+		n := (cpu.dmem[cpu.sr] & bitMasks[2]) >> 2
+		if n == 0 {
+			cpu.pc += i.k16 //+1
+		}
+		return
 	case INSN_BRTC:
 		// if T = 0 then PC <- PC + k + 1
 		t := (cpu.dmem[cpu.sr] & bitMasks[6]) >> 6
@@ -399,11 +414,11 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_COM:
 		// Rd <- ^Rd
-		r := 0xff - uint16(cpu.dmem[i.dest])
-		cpu.dmem[i.dest] = byte(r)
+		r := 0xff - cpu.dmem[i.dest]
+		cpu.dmem[i.dest] = r
 		cpu.clear_v()
 		cpu.set_c()
-		if ((r & 0x0080) >> 7) == 1 {
+		if ((r & 0x80) >> 7) == 1 {
 			cpu.set_n()
 		} else {
 			cpu.clear_n()
@@ -508,6 +523,26 @@ func (cpu *CPU) Execute(i Instr) {
 			cpu.clear_n()
 		}
 		return
+	case INSN_INC:
+		// Rd <- Rd + 1
+		if cpu.dmem[i.dest] == 0x7f {
+			cpu.set_v()
+		} else {
+			cpu.clear_v()
+		}
+		r := cpu.dmem[i.dest] + 1
+		cpu.dmem[i.dest] = r
+		if r == 0 {
+			cpu.set_z()
+		} else {
+			cpu.clear_z()
+		}
+		if ((r & 0x80) >> 7) == 1 {
+			cpu.set_n()
+		} else {
+			cpu.clear_n()
+		}
+		return
 	case INSN_LDDY:
 		// Rd <- (Y + q)
 		y := b2u16little([]byte{cpu.dmem[28], cpu.dmem[29]}) + i.offset
@@ -591,11 +626,6 @@ func (cpu *CPU) Execute(i Instr) {
 		z := b2i16little([]byte{cpu.dmem[30], cpu.dmem[31]})
 		cpu.dmem[0] = cpu.imem[z]
 		return
-	case INSN_LSR:
-		// logical shift right Rd
-		r := cpu.dmem[i.dest] >> 1
-		cpu.dmem[i.dest] = r
-		return
 	case INSN_MOV:
 		// Rd <- Rr
 		cpu.dmem[i.dest] = cpu.dmem[i.source]
@@ -606,9 +636,10 @@ func (cpu *CPU) Execute(i Instr) {
 		cpu.dmem[i.dest] = cpu.dmem[i.source]
 		return
 	case INSN_NEG:
+		// Rd <- $00 - Rd
 		// Replaces the contents of register Rd with its two's complement
-		r := ^cpu.dmem[i.dest] + 1
-		cpu.dmem[i.dest] = r
+		d := uint16(cpu.dmem[i.dest])
+		r := 0x00 - d
 		if r == 0 {
 			cpu.set_z()
 			cpu.clear_c()
@@ -616,11 +647,13 @@ func (cpu *CPU) Execute(i Instr) {
 			cpu.clear_z()
 			cpu.set_c()
 		}
-		if ((r & 128) >> 7) == 1 {
+		if ((r & 0x0080) >> 7) == 1 {
 			cpu.set_n()
 		} else {
 			cpu.clear_n()
 		}
+		if r > 0xff { cpu.set_v() } else { cpu.clear_v() }
+		cpu.dmem[i.dest] = byte(r)
 		return
 	case INSN_OR:
 		// Rd <- Rd | Rr
@@ -700,10 +733,13 @@ func (cpu *CPU) Execute(i Instr) {
 		// Shifts all bits in Rd one place to the right.
 		// The C Flag is shifted into bit 7 of Rd.
 		// Bit 0 is shifted into the C Flag.
-		c := (cpu.dmem[i.dest] & 0x80) >> 7
-		r := (cpu.dmem[i.dest] >> 1) | byte((cpu.dmem[cpu.sr]&0x01)<<7)
+		// current C
+		c := (cpu.dmem[cpu.sr] & 0x01)
+		// new C flag
+		x := cpu.dmem[i.dest] & 0x01
+		r := c << 7 | (cpu.dmem[i.dest] >> 1)
 		cpu.dmem[i.dest] = r
-		if c == 0 {
+		if x == 1 {
 			cpu.set_c()
 		} else {
 			cpu.clear_c()
@@ -718,6 +754,15 @@ func (cpu *CPU) Execute(i Instr) {
 		} else {
 			cpu.clear_n()
 		}
+		return
+	case INSN_LSR:
+		// logical shift right Rd
+		x := cpu.dmem[i.dest] & 0x01
+		r := cpu.dmem[i.dest] >> 1
+		cpu.dmem[i.dest] = r
+		if x == 1 { cpu.set_c() } else { cpu.clear_c() }
+		if r == 0 { cpu.set_z() } else { cpu.clear_z() }
+		cpu.clear_n()
 		return
 	case INSN_SUB:
 		// Rd <- Rd - Rr
@@ -847,7 +892,7 @@ func (cpu *CPU) Execute(i Instr) {
 		cpu.dmem[y] = cpu.dmem[i.source]
 		return
 	case INSN_STYP:
-		y := uint16(cpu.dmem[28])<<8 | uint16(cpu.dmem[28])
+		y := uint16(cpu.dmem[29])<<8 | uint16(cpu.dmem[28])
 		cpu.dmem[y] = cpu.dmem[i.source]
 		// post-increment
 		cpu.dmem[28] += 1
@@ -872,7 +917,7 @@ func (cpu *CPU) Execute(i Instr) {
 		z := uint16(cpu.dmem[31])<<8 | uint16(cpu.dmem[30])
 		cpu.dmem[z] = cpu.dmem[i.source]
 		// post-increment
-		cpu.dmem[26] += 1
+		cpu.dmem[30] += 1
 		return
 	case INSN_STZM:
 		// pre-decrement

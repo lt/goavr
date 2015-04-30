@@ -1,7 +1,7 @@
 int main(void) {
    int a, b, c;
-   a = 9;
+   a = 17;
    b = 3;
-   c = a / b;
+   c = a % b;
    return c;
 }
