@@ -16,6 +16,9 @@ func dissAssemble(b []byte) Instr {
 	m := lookUp(b)
 	inst := Instr{family: m.family, label: m.label}
 	switch m.label {
+	case INSN_UNK:
+		fmt.Printf("BZZZT! THANKS FOR PLAYING!", b2u16big(b))
+		return inst
 	case INSN_NOP:
 		fmt.Printf("%.4x\tnop\n", b2u16big(b))
 		return inst
@@ -223,7 +226,7 @@ func dissAssemble(b []byte) Instr {
 		// if it is, the result is negative.
 		if ((k & 0x40) >> 6) == 1 {
 			inst.k16 = int16((k + 0xff80) << 1)
-			fmt.Printf("%.4x\tbrne\t-.%d\n", b2u16big(b), inst.k16)
+			fmt.Printf("%.4x\tbrne\t.%d\n", b2u16big(b), inst.k16)
 		} else {
 			inst.k16 = int16(k << 1)
 			fmt.Printf("%.4x\tbrne\t.+%d\n", b2u16big(b), inst.k16)
@@ -236,10 +239,10 @@ func dissAssemble(b []byte) Instr {
 		k := (b2u16little(b) & 0x03f8) >> 3
 		if ((k & 0x40) >> 6) == 1 {
 			inst.k16 = int16((k + 0xff80) << 1)
-			fmt.Printf("%.4x\tbreq\t-.%d\n", b2u16big(b), inst.k16)
+			fmt.Printf("%.4x\tbreq\t.%d\n", b2u16big(b), inst.k16)
 		} else {
 			inst.k16 = int16(k << 1)
-			fmt.Printf("%.4x\tbreq\t+.%d\n", b2u16big(b), inst.k16)
+			fmt.Printf("%.4x\tbreq\t.+%d\n", b2u16big(b), inst.k16)
 		}
 		return inst
 	case INSN_BRPL:
@@ -258,10 +261,22 @@ func dissAssemble(b []byte) Instr {
 		k := (b2u16little(b) & 0x03f8) >> 3
 		if ((k & 0x40) >> 6) == 1 {
 			inst.k16 = int16((k + 0xff80) << 1)
+			fmt.Printf("%.4x\tbrtc\t.%d\n", b2u16big(b), inst.k16)
 		} else {
 			inst.k16 = int16(k << 1)
+			fmt.Printf("%.4x\tbrtc\t.+%d\n", b2u16big(b), inst.k16)
 		}
-		fmt.Printf("%.4x\tbrtc\t.+%d\n", b2u16big(b), inst.k16)
+		return inst
+	case INSN_BRTS:
+		// 1111 00kk kkkk k110
+		k := (b2u16little(b) & 0x03f8) >> 3
+		if ((k & 0x40) >> 6) == 1 {
+			inst.k16 = int16((k + 0xff80) << 1)
+			fmt.Printf("%.4x\tbrts\t.%d\n", b2u16big(b), inst.k16)
+		} else {
+			inst.k16 = int16(k << 1)
+			fmt.Printf("%.4x\tbrts\t.+%d\n", b2u16big(b), inst.k16)
+		}
 		return inst
 	case INSN_COM:
 		// 1001 010d dddd 0000
@@ -547,7 +562,7 @@ func lookUp(raw []byte) OpCode {
 			}
 			return op
 		} else {
-			op = OpCode{mnemonic: "unknown", value: b}
+			op = OpCode{mnemonic: "unknown", value: b, label: INSN_UNK}
 		}
 	}
 	return op

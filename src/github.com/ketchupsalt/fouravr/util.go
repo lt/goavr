@@ -23,6 +23,7 @@ func b2u32little(in []byte) uint32 { return (uint32(in[1]) << 8) | uint32(in[0])
 func b2i32little(in []byte) int32 { return (int32(in[1]) << 8) | int32(in[0]) }
 
 func u16big2byte(in uint16) []byte { return []byte{byte(in >> 8), byte(in & 0x00ff)} }
+func u16lil2byte(in uint16) []byte { return []byte{byte(in & 0x00ff),byte(in >> 8)} }
 
 func check(e error) {
 	if e != nil {

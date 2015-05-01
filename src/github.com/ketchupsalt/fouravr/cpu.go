@@ -52,10 +52,10 @@ Golang Logical Operators: (because I'm tired of looking this shit up)
 */
 
 func (cpu *CPU) Step() {
-	fmt.Printf("pc: %.4x\tsr: %.8b\tsp: %.4x\t\n", cpu.pc, cpu.dmem[cpu.sr], cpu.sp.current())
 	//defer handlePanic()
 	cpu.imem.Fetch()
 	cpu.Execute(dissAssemble(current))
+	fmt.Printf("pc: %.4x\tsr: %.8b\tsp: %.4x\t\n", cpu.pc, cpu.dmem[cpu.sr], cpu.sp.current())
 	cpu.dmem.printRegs()
 	cpu.dmem.printStack()
 	fmt.Println("---------------------------------")
@@ -153,6 +153,24 @@ func (cpu *CPU) Execute(i Instr) {
 	bitMasks := []byte{1, 2, 4, 8, 16, 32, 64, 128}
 
 	switch i.label {
+	case INSN_UNK:
+		os.Exit(1)
+		return
+	case INSN_NOP:
+		// Duh.
+		return
+	case INSN_CLI:
+		// Clear global interrupt
+		cpu.clear_i()
+		return
+	case INSN_CLT:
+		// Clear global interrupt
+		cpu.clear_t()
+		return
+	case INSN_SET:
+		// Clear global interrupt
+		cpu.set_t()
+		return
 	case INSN_JMP:
 		// we all know this doesn't work because
 		// this version doesn't have a 22bit pc
@@ -175,12 +193,34 @@ func (cpu *CPU) Execute(i Instr) {
 		} else {
 			cpu.clear_z()
 		}
+		// this is some lazy shit right here.
 		if r > 0xff {
+			cpu.set_v()
 			cpu.set_c()
 		} else {
+			cpu.clear_v()
 			cpu.clear_c()
 		}
 		cpu.dmem[i.dest] = byte(r)
+		return
+	case INSN_ADC:
+		// Rd <- Rd + Rr + C
+		c := uint16(cpu.dmem[cpu.sr] & 0x01)
+		r := uint16(cpu.dmem[i.dest]) + uint16(cpu.dmem[i.source]) + c
+		cpu.dmem[i.dest] = byte(r)
+		if r == 0 {
+			cpu.set_z()
+		} else {
+			cpu.clear_z()
+		}
+		if r > 0x00ff {
+			cpu.set_v()
+			cpu.set_c()
+		} else {
+			cpu.clear_v()
+			cpu.clear_c()
+		}
+		if ((r & 0x0080) >> 7) == 1 { cpu.set_n() } else { cpu.clear_n() }
 		return
 	case INSN_AND:
 		// Rd <- Rd & Rr
@@ -200,43 +240,19 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_ANDI:
 		// Rd <- Rd & K
-		cpu.dmem[i.dest] = cpu.dmem[i.dest] & i.kdata
-		return
-	case INSN_NOP:
-		// Duh.
-		return
-	case INSN_CLI:
-		// Clear global interrupt
-		cpu.clear_i()
-		return
-	case INSN_CLT:
-		// Clear global interrupt
-		cpu.clear_t()
-		return
-	case INSN_SET:
-		// Clear global interrupt
-		cpu.set_t()
-		return
-	case INSN_ADC:
-		// Rd <- Rd + Rr + C
-		c := uint16(cpu.dmem[cpu.sr] & 0x01)
-		r := uint16(cpu.dmem[i.dest]) + uint16(cpu.dmem[i.source]) + c
-		cpu.dmem[i.dest] = byte(r)
-		if r == 0 {
-			cpu.set_z()
-		} else {
-			cpu.clear_z()
-		}
-		if r > 0x00ff {
-			cpu.set_c()
-		} else {
-			cpu.clear_c()
-		}
-		if ((r & 0x0080) >> 7) == 1 { cpu.set_n() } else { cpu.set_n() }
+		r := cpu.dmem[i.dest] & i.kdata
+		cpu.clear_v()
+		if (r & 0x80) >> 7 == 1 { cpu.set_n() } else { cpu.clear_n() }
+		if r == 0 { cpu.set_z() } else { cpu.clear_z() }
+		cpu.dmem[i.dest] = r
 		return
 	case INSN_EOR:
 		// Rd <- Rd^Rr
-		cpu.dmem[i.dest] = cpu.dmem[i.dest] ^ cpu.dmem[i.source]
+		cpu.clear_v()
+		r := cpu.dmem[i.dest] ^ cpu.dmem[i.source]
+		if (r & 0x80) >> 7 == 1 { cpu.set_n() } else { cpu.clear_n() }
+		if r == 0 { cpu.set_z() } else { cpu.clear_z() }
+		cpu.dmem[i.dest] = r
 		return
 	case INSN_IN:
 		// Rd <- I/O(A)
@@ -252,11 +268,9 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_SBI:
 		// I/O(A,b) <- 1
-		fmt.Printf("%.8b\n", cpu.dmem[i.ioaddr])
 		// bitMasks is a map that looks up the mask to isolate
 		// the necessary bit
-		cpu.dmem[i.ioaddr] &= bitMasks[i.registerBit]
-		fmt.Printf("%.8b\n", cpu.dmem[i.ioaddr])
+		cpu.dmem[i.ioaddr] |= bitMasks[i.registerBit]
 		return
 	case INSN_CBI:
 		// I/O(A,b) <- 0
@@ -282,8 +296,8 @@ func (cpu *CPU) Execute(i Instr) {
 	case INSN_BLD:
 		// Rd(b) <- T
 		// Copies the T Flag in the SREG (Status Register) to bit b in register Rd.
-		t := (cpu.dmem[cpu.sr] & bitMasks[7])
-		cpu.dmem[i.dest] = byte(t)
+		t := (cpu.dmem[cpu.sr] & bitMasks[7]) >> i.registerBit
+		cpu.dmem[i.dest] |= byte(t)
 		return
 	case INSN_BST:
 		// T <- Rd(b)
@@ -331,10 +345,17 @@ func (cpu *CPU) Execute(i Instr) {
 		} else {
 			cpu.clear_z()
 		}
-		if (r >> 15) == 1 {
+		if (r & 0x0080) >> 7 == 1 {
 			cpu.set_n()
 		} else {
 			cpu.clear_n()
+		}
+		if r > 0xff {
+			cpu.set_v()
+			cpu.set_c()
+		} else {
+			cpu.clear_v()
+			cpu.clear_c()
 		}
 		return
 	case INSN_SBIW:
@@ -344,23 +365,22 @@ func (cpu *CPU) Execute(i Instr) {
 		} else {
 			cpu.clear_c()
 		}
-		// low byte
-		x := uint16(cpu.dmem[i.dest])
-		// high byte
-		y := uint16(cpu.dmem[i.dest+1])
-		r := ((y << 8) | x) - uint16(i.kdata)
-		cpu.dmem[i.dest] = byte(r & 0x00ff)
-		cpu.dmem[i.dest+1] = byte(r >> 8)
+		x := uint16(cpu.dmem[i.dest+1]) << 8 | uint16(cpu.dmem[i.dest])
+		r := x - uint16(i.kdata)
 		if r == 0 {
 			cpu.set_z()
 		} else {
 			cpu.clear_z()
 		}
-		if (r >> 15) == 1 {
+		if (r & 0x0080 ) >> 7 == 1 {
 			cpu.set_n()
 		} else {
 			cpu.clear_n()
 		}
+		if r > 0xff { cpu.set_v() } else { cpu.clear_v() }
+		if uint16(i.kdata) > x { cpu.set_c() } else { cpu.clear_c() }
+		cpu.dmem[i.dest] = byte(r & 0x00ff)
+		cpu.dmem[i.dest+1] = byte(r >> 8)
 		return
 	case INSN_BRCC:
 		// Branch if carry cleared
@@ -378,23 +398,22 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_BREQ:
 		//if Rd = Rr(Z=1) then PC <- PC + k + 1
-		r := (cpu.dmem[cpu.sr] & bitMasks[1]) >> 1
-		if r == 1 {
+		z := (cpu.dmem[cpu.sr] & bitMasks[1]) >> 1
+		if z == 1 {
 			cpu.pc += i.k16
-		}
-		return
-	case INSN_BRGE:
-		// if Rd >= Rr then PC += k
-		n := cpu.dmem[cpu.sr] & bitMasks[2]
-		v := cpu.dmem[cpu.sr] & bitMasks[3]
-		if (n ^ v) == 0 {
-			cpu.pc += i.k16 //+1
 		}
 		return
 	case INSN_BRNE:
 		// if (Z = 0) then PC <-  PC + k + 1
 		z := (cpu.dmem[cpu.sr] & bitMasks[1]) >> 1
 		if z == 0 {
+			cpu.pc += i.k16 //+1
+		}
+		return
+	case INSN_BRGE:
+		// if Rd >= Rr then PC += k
+		s := (cpu.dmem[cpu.sr] & bitMasks[4]) >> 4
+		if s == 0 {
 			cpu.pc += i.k16 //+1
 		}
 		return
@@ -409,6 +428,13 @@ func (cpu *CPU) Execute(i Instr) {
 		// if T = 0 then PC <- PC + k + 1
 		t := (cpu.dmem[cpu.sr] & bitMasks[6]) >> 6
 		if t == 0 {
+			cpu.pc += i.k16 //+1
+		}
+		return
+	case INSN_BRTS:
+		// if T = 1 then PC <- PC + k + 1
+		t := (cpu.dmem[cpu.sr] & bitMasks[6]) >> 6
+		if t == 1 {
 			cpu.pc += i.k16 //+1
 		}
 		return
@@ -431,8 +457,9 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_CP:
 		// Rd - Rr
-		d := uint16(cpu.dmem[i.dest])
-		s := uint16(cpu.dmem[i.source])
+		d := int16(cpu.dmem[i.dest])
+		s := int16(cpu.dmem[i.source])
+		if d >= s { cpu.set_s() } else { cpu.set_s() }
 		if s > d { cpu.set_c() } else { cpu.clear_c() }
 		r :=  d - s 
 		if r == 0 {
@@ -453,9 +480,10 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_CPC:
 		// Rd - Rr - C
-		d := uint16(cpu.dmem[i.dest])
-		s := uint16(cpu.dmem[i.source])
-		c := uint16(cpu.dmem[cpu.sr] & 0x01)
+		d := int16(cpu.dmem[i.dest])
+		s := int16(cpu.dmem[i.source])
+		c := int16(cpu.dmem[cpu.sr] & 0x01)
+		if d >= s { cpu.set_s() } else { cpu.set_s() }
 		if (s + c) > d {
 			cpu.set_c()
 		} else {
@@ -481,8 +509,10 @@ func (cpu *CPU) Execute(i Instr) {
 		// I can't tell from the doc, but I think this check
 		// has to happen before K is subtracted. We'll see.
 		if i.kdata > cpu.dmem[i.dest] {
+			cpu.set_s()
 			cpu.set_c()
 		} else {
+			cpu.clear_s()
 			cpu.clear_c()
 		}
 		r := cpu.dmem[i.dest] - i.kdata
@@ -734,10 +764,10 @@ func (cpu *CPU) Execute(i Instr) {
 		// The C Flag is shifted into bit 7 of Rd.
 		// Bit 0 is shifted into the C Flag.
 		// current C
-		c := (cpu.dmem[cpu.sr] & 0x01)
+		c := cpu.dmem[cpu.sr] & 0x01
 		// new C flag
 		x := cpu.dmem[i.dest] & 0x01
-		r := c << 7 | (cpu.dmem[i.dest] >> 1)
+		r := (c << 7) | (cpu.dmem[i.dest] >> 1)
 		cpu.dmem[i.dest] = r
 		if x == 1 {
 			cpu.set_c()

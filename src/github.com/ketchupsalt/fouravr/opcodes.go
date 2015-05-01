@@ -10,7 +10,8 @@ const (
 )
 
 const (
-	INSN_ADC = iota
+	INSN_UNK = iota
+	INSN_ADC 
 	INSN_ADD
 	INSN_ADIW
 	INSN_AND
@@ -527,6 +528,13 @@ var OpCodeLookUpTable = []OpCode{
 		value:    0xf406,
 		family:   Branches,
 		label:    INSN_BRTC,
+	},
+	OpCode{
+		mnemonic: "brts",
+		mask:     0xfc07,
+		value:    0xf006,
+		family:   Branches,
+		label:    INSN_BRTS,
 	},
 	OpCode{
 		mnemonic: "com",

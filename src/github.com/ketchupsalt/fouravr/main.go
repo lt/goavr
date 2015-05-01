@@ -5,12 +5,14 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 )
 
-var fileName string
+var fileName, single string
 var dumpMem, dumpProg bool
 
 func init() {
+	flag.StringVar(&single, "s", single, "Parse a single instruction")
 	flag.StringVar(&fileName, "f", fileName, "File path, yo")
 	flag.BoolVar(&dumpMem, "d", false, "Just dump the program memory")
 	flag.BoolVar(&dumpProg, "p", false, "Pretty print the whole file")
@@ -21,6 +23,15 @@ var cpu CPU
 func main() {
 
 	flag.Parse()
+
+	if single != "" {
+		x, _ := strconv.Atoi(single)
+		fmt.Printf("%.4x\n", x)
+		op := lookUp(u16lil2byte(uint16(x)))
+		fmt.Println(op)
+		os.Exit(0);
+	}
+	
 	if fileName == "" {
 		//fileName = "/Users/erin/codebase/fouravr/Demo/firmware/main.elf"
 		// JMP
