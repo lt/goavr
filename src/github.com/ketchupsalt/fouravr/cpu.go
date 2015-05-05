@@ -8,7 +8,19 @@ import (
 	"strings"
 )
 
+const (
+	x_low = iota + 26
+	x_high
+	y_low
+	y_high
+	z_low
+	z_high
+)
+
 var programEnd int16
+
+var bitMasks = []byte{1, 2, 4, 8, 16, 32, 64, 128}
+
 
 type CPU struct {
 	pc   int16
@@ -38,6 +50,21 @@ func (cpu *CPU) clear_n() { cpu.dmem[cpu.sr] &= 251 }
 func (cpu *CPU) clear_z() { cpu.dmem[cpu.sr] &= 253 }
 func (cpu *CPU) clear_c() { cpu.dmem[cpu.sr] &= 254 }
 
+// Get bits from status register
+func (cpu *CPU) get_i() byte { return (cpu.dmem[cpu.sr] & bitMasks[7]) >> 7 }
+func (cpu *CPU) get_t() byte { return (cpu.dmem[cpu.sr] & bitMasks[6]) >> 6 }
+func (cpu *CPU) get_h() byte { return (cpu.dmem[cpu.sr] & bitMasks[5]) >> 5 }
+func (cpu *CPU) get_s() byte { return (cpu.dmem[cpu.sr] & bitMasks[4]) >> 4 }
+func (cpu *CPU) get_v() byte { return (cpu.dmem[cpu.sr] & bitMasks[3]) >> 3 }
+func (cpu *CPU) get_n() byte { return (cpu.dmem[cpu.sr] & bitMasks[2]) >> 2 }
+func (cpu *CPU) get_z() byte { return (cpu.dmem[cpu.sr] & bitMasks[1]) >> 1 }
+func (cpu *CPU) get_c() byte { return (cpu.dmem[cpu.sr] & bitMasks[0]) }
+
+
+// Get the address in the Z register
+func (cpu *CPU) zAddr() uint16 { return b2u16little([]byte{cpu.dmem[z_low], cpu.dmem[z_high]}) }
+func (cpu *CPU) xAddr() uint16 { return b2u16little([]byte{cpu.dmem[x_low], cpu.dmem[x_high]}) }
+func (cpu *CPU) yAddr() uint16 { return b2u16little([]byte{cpu.dmem[y_low], cpu.dmem[y_high]}) }
 /*
 Golang Logical Operators: (because I'm tired of looking this shit up)
 +    ADD
@@ -65,7 +92,7 @@ func (cpu *CPU) Interactive() {
 	cpu.sr = 0x3f
 	cpu.sp.high = 0x3e
 	cpu.sp.low = 0x3d
-	
+
 	fmt.Println("Type ? for help.")
 	for {
 		prompt := bufio.NewReader(os.Stdin)
@@ -150,8 +177,6 @@ func (cpu *CPU) Interactive() {
 
 func (cpu *CPU) Execute(i Instr) {
 
-	bitMasks := []byte{1, 2, 4, 8, 16, 32, 64, 128}
-
 	switch i.label {
 	case INSN_UNK:
 		os.Exit(1)
@@ -178,8 +203,7 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_IJMP:
 		// PC <- Z(15:0)
-		z := b2i16little([]byte{cpu.dmem[30], cpu.dmem[31]})
-		cpu.pc = z << 1
+		cpu.pc = int16(cpu.zAddr() << 1)
 		return
 	case INSN_RJMP:
 		// PC <- PC + k + 1
@@ -187,6 +211,7 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_ADD:
 		// Rd <- Rd + Rr
+		// Casting to uint16 to catch overflow for status registers
 		r := uint16(cpu.dmem[i.dest]) + uint16(cpu.dmem[i.source])
 		if r == 0 {
 			cpu.set_z()
@@ -205,8 +230,8 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_ADC:
 		// Rd <- Rd + Rr + C
-		c := uint16(cpu.dmem[cpu.sr] & 0x01)
-		r := uint16(cpu.dmem[i.dest]) + uint16(cpu.dmem[i.source]) + c
+		// Casting to uint16 to catch overflow for status registers
+		r := uint16(cpu.dmem[i.dest]) + uint16(cpu.dmem[i.source]) + uint16(cpu.get_c())
 		cpu.dmem[i.dest] = byte(r)
 		if r == 0 {
 			cpu.set_z()
@@ -220,7 +245,11 @@ func (cpu *CPU) Execute(i Instr) {
 			cpu.clear_v()
 			cpu.clear_c()
 		}
-		if ((r & 0x0080) >> 7) == 1 { cpu.set_n() } else { cpu.clear_n() }
+		if ((r & 0x0080) >> 7) == 1 {
+			cpu.set_n()
+		} else {
+			cpu.clear_n()
+		}
 		return
 	case INSN_AND:
 		// Rd <- Rd & Rr
@@ -242,16 +271,32 @@ func (cpu *CPU) Execute(i Instr) {
 		// Rd <- Rd & K
 		r := cpu.dmem[i.dest] & i.kdata
 		cpu.clear_v()
-		if (r & 0x80) >> 7 == 1 { cpu.set_n() } else { cpu.clear_n() }
-		if r == 0 { cpu.set_z() } else { cpu.clear_z() }
+		if (r&0x80)>>7 == 1 {
+			cpu.set_n()
+		} else {
+			cpu.clear_n()
+		}
+		if r == 0 {
+			cpu.set_z()
+		} else {
+			cpu.clear_z()
+		}
 		cpu.dmem[i.dest] = r
 		return
 	case INSN_EOR:
 		// Rd <- Rd^Rr
 		cpu.clear_v()
 		r := cpu.dmem[i.dest] ^ cpu.dmem[i.source]
-		if (r & 0x80) >> 7 == 1 { cpu.set_n() } else { cpu.clear_n() }
-		if r == 0 { cpu.set_z() } else { cpu.clear_z() }
+		if (r&0x80)>>7 == 1 {
+			cpu.set_n()
+		} else {
+			cpu.clear_n()
+		}
+		if r == 0 {
+			cpu.set_z()
+		} else {
+			cpu.clear_z()
+		}
 		cpu.dmem[i.dest] = r
 		return
 	case INSN_IN:
@@ -308,7 +353,7 @@ func (cpu *CPU) Execute(i Instr) {
 		} else {
 			cpu.clear_t()
 		}
-		return 
+		return
 	case INSN_SBRC:
 		// if Rr(b) = 0 then PC += 2
 		r := (cpu.dmem[i.source] & bitMasks[i.registerBit]) >> i.registerBit
@@ -334,10 +379,10 @@ func (cpu *CPU) Execute(i Instr) {
 	case INSN_ADIW:
 		// Rd+1:Rd <- Rd+1:Rd + K
 		// low byte
-		x := uint16(cpu.dmem[i.dest])
+		low := uint16(cpu.dmem[i.dest])
 		// high byte
-		y := uint16(cpu.dmem[i.dest+1])
-		r := ((y << 8) | x) + uint16(i.kdata)
+		high := uint16(cpu.dmem[i.dest+1])
+		r := ((high << 8) | low) + uint16(i.kdata)
 		cpu.dmem[i.dest] = byte(r & 0x00ff)
 		cpu.dmem[i.dest+1] = byte(r >> 8)
 		if r == 0 {
@@ -345,7 +390,7 @@ func (cpu *CPU) Execute(i Instr) {
 		} else {
 			cpu.clear_z()
 		}
-		if (r & 0x0080) >> 7 == 1 {
+		if (r&0x0080)>>7 == 1 {
 			cpu.set_n()
 		} else {
 			cpu.clear_n()
@@ -365,48 +410,52 @@ func (cpu *CPU) Execute(i Instr) {
 		} else {
 			cpu.clear_c()
 		}
-		x := uint16(cpu.dmem[i.dest+1]) << 8 | uint16(cpu.dmem[i.dest])
+		x := uint16(cpu.dmem[i.dest+1])<<8 | uint16(cpu.dmem[i.dest])
 		r := x - uint16(i.kdata)
 		if r == 0 {
 			cpu.set_z()
 		} else {
 			cpu.clear_z()
 		}
-		if (r & 0x0080 ) >> 7 == 1 {
+		if (r&0x0080)>>7 == 1 {
 			cpu.set_n()
 		} else {
 			cpu.clear_n()
 		}
-		if r > 0xff { cpu.set_v() } else { cpu.clear_v() }
-		if uint16(i.kdata) > x { cpu.set_c() } else { cpu.clear_c() }
+		if r > 0xff {
+			cpu.set_v()
+		} else {
+			cpu.clear_v()
+		}
+		if uint16(i.kdata) > x {
+			cpu.set_c()
+		} else {
+			cpu.clear_c()
+		}
 		cpu.dmem[i.dest] = byte(r & 0x00ff)
 		cpu.dmem[i.dest+1] = byte(r >> 8)
 		return
 	case INSN_BRCC:
 		// Branch if carry cleared
-		c := cpu.dmem[cpu.sr] & 0x01
-		if c == 0 {
+		if cpu.get_c() == 0 {
 			cpu.pc += i.k16 //+1
 		}
 		return
 	case INSN_BRCS:
 		// Branch if carry set
-		c := cpu.dmem[cpu.sr] & 0x01
-		if c == 1 {
+		if cpu.get_c() == 1 {
 			cpu.pc += i.k16
 		}
 		return
 	case INSN_BREQ:
 		//if Rd = Rr(Z=1) then PC <- PC + k + 1
-		z := (cpu.dmem[cpu.sr] & bitMasks[1]) >> 1
-		if z == 1 {
+		if cpu.get_z() == 1 {
 			cpu.pc += i.k16
 		}
 		return
 	case INSN_BRNE:
 		// if (Z = 0) then PC <-  PC + k + 1
-		z := (cpu.dmem[cpu.sr] & bitMasks[1]) >> 1
-		if z == 0 {
+		if cpu.get_z() == 0 {
 			cpu.pc += i.k16 //+1
 		}
 		return
@@ -459,9 +508,17 @@ func (cpu *CPU) Execute(i Instr) {
 		// Rd - Rr
 		d := int16(cpu.dmem[i.dest])
 		s := int16(cpu.dmem[i.source])
-		if d >= s { cpu.set_s() } else { cpu.set_s() }
-		if s > d { cpu.set_c() } else { cpu.clear_c() }
-		r :=  d - s 
+		if d >= s {
+			cpu.set_s()
+		} else {
+			cpu.set_s()
+		}
+		if s > d {
+			cpu.set_c()
+		} else {
+			cpu.clear_c()
+		}
+		r := d - s
 		if r == 0 {
 			cpu.set_z()
 		} else {
@@ -482,8 +539,12 @@ func (cpu *CPU) Execute(i Instr) {
 		// Rd - Rr - C
 		d := int16(cpu.dmem[i.dest])
 		s := int16(cpu.dmem[i.source])
-		c := int16(cpu.dmem[cpu.sr] & 0x01)
-		if d >= s { cpu.set_s() } else { cpu.set_s() }
+		c := int16(cpu.get_c())
+		if d >= s {
+			cpu.set_s()
+		} else {
+			cpu.set_s()
+		}
 		if (s + c) > d {
 			cpu.set_c()
 		} else {
@@ -575,86 +636,73 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_LDDY:
 		// Rd <- (Y + q)
-		y := b2u16little([]byte{cpu.dmem[28], cpu.dmem[29]}) + i.offset
-		fmt.Printf("%.4x\t%.4x\n",y, cpu.dmem[y])
+		y := cpu.yAddr() + i.offset
+		fmt.Printf("%.4x\t%.4x\n", y, cpu.dmem[y])
 		cpu.dmem[i.dest] = cpu.dmem[y]
 		return
 	case INSN_LDDZ:
 		// Rd <- (Z + q)
-		z := b2u16little([]byte{cpu.dmem[30], cpu.dmem[31]}) + i.offset
-		fmt.Printf("%.4x\t%.4x\n",z, cpu.dmem[z])
+		z := cpu.zAddr() + i.offset
+		fmt.Printf("%.4x\t%.4x\n", z, cpu.dmem[z])
 		cpu.dmem[i.dest] = cpu.dmem[z]
 		return
 	case INSN_LDX:
 		// Rd <- (X)
-		x := b2u16little([]byte{cpu.dmem[26], cpu.dmem[27]})
-		cpu.dmem[i.dest] = cpu.dmem[x]
+		cpu.dmem[i.dest] = cpu.dmem[cpu.xAddr()]
 		return
 	case INSN_LDXP:
 		// Rd <- (X), X <- X + 1
-		x := b2u16little([]byte{cpu.dmem[26], cpu.dmem[27]})
-		cpu.dmem[i.dest] = cpu.dmem[x]
-		cpu.dmem[26] += 1
+		cpu.dmem[i.dest] = cpu.dmem[cpu.xAddr()]
+		cpu.dmem[x_low] += 1
 		return
 	case INSN_LDY:
 		// Rd <- (Y)
-		y := b2u16little([]byte{cpu.dmem[28], cpu.dmem[29]})
-		cpu.dmem[i.dest] = cpu.dmem[y]
+		cpu.dmem[i.dest] = cpu.dmem[cpu.yAddr()]
 		return
 	case INSN_LDYP:
 		// Rd <- (Y), Y <- Y + 1
-		y := b2u16little([]byte{cpu.dmem[28], cpu.dmem[29]})
-		cpu.dmem[i.dest] = cpu.dmem[y]
+		cpu.dmem[i.dest] = cpu.dmem[cpu.yAddr()]
 		// XXX TODO(ERIN) this could overflow into the high
 		// byte someday.
-		cpu.dmem[28] += 1
+		cpu.dmem[y_low] += 1
 		return
 	case INSN_LDYM:
 		// Rd <- (Y), Y <- Y - 1
-		y := b2u16little([]byte{cpu.dmem[28], cpu.dmem[29]})
 		// pre-decrement
-		cpu.dmem[28] -= 1
-		cpu.dmem[i.dest] = cpu.dmem[y]
+		cpu.dmem[y_low] -= 1
+		cpu.dmem[i.dest] = cpu.dmem[cpu.yAddr()]
 		return
 	case INSN_LDZ:
 		// Rd <- (Z) (dmem)
-		z := b2u16little([]byte{cpu.dmem[30], cpu.dmem[31]})
-		cpu.dmem[i.dest] = cpu.dmem[z]
+		cpu.dmem[i.dest] = cpu.dmem[cpu.zAddr()]
 		return
 	case INSN_LDZP:
 		// Rd <- (Z) (dmem), Z <- Z - 1
-		z := b2u16little([]byte{cpu.dmem[30], cpu.dmem[31]})
-		cpu.dmem[i.dest] = cpu.dmem[z]
+		cpu.dmem[i.dest] = cpu.dmem[cpu.zAddr()]
 		// post-decrement
 		// XXX TODO(ERIN) this could overflow into the high
 		// byte some
-		cpu.dmem[30] += 1
+		cpu.dmem[z_low] += 1
 		return
 	case INSN_LDZM:
 		// Rd <- (Z) (dmem), Z <- Z - 1
-		z := b2u16little([]byte{cpu.dmem[30], cpu.dmem[31]})
 		// pre-decrement
-		cpu.dmem[30] -= 1
-		cpu.dmem[i.dest] = cpu.dmem[z]
+		cpu.dmem[z_low] -= 1
+		cpu.dmem[i.dest] = cpu.dmem[cpu.zAddr()]
 		return
 	case INSN_LPMZ:
 		// Rd <- (Z) (imem)
-		z := b2i16little([]byte{cpu.dmem[30], cpu.dmem[31]})
-		cpu.dmem[i.dest] = cpu.imem[z]
+		cpu.dmem[i.dest] = cpu.imem[cpu.zAddr()]
 		return
 	case INSN_LPMZP:
 		// Rd <- (Z), Z <- Z + 1 (imem)
-		//z := int16(cpu.dmem[31] << 8) | int16(cpu.dmem[30])
-		z := b2i16little([]byte{cpu.dmem[30], cpu.dmem[31]})
-		fmt.Printf("char found at %.4x:\t%.4x\n", z, cpu.imem[z])
-		cpu.dmem[i.dest] = cpu.imem[z]
+		cpu.dmem[i.dest] = cpu.imem[cpu.zAddr()]
 		// post-increment
-		cpu.dmem[30] += 1
+		cpu.dmem[z_low] += 1
 		return
 	case INSN_LPM:
-		// R0 <- (Z)
-		z := b2i16little([]byte{cpu.dmem[30], cpu.dmem[31]})
-		cpu.dmem[0] = cpu.imem[z]
+		// R0 <- (Z) (imem)
+		cpu.dmem[0] = cpu.imem[cpu.zAddr()]
 		return
 	case INSN_MOV:
 		// Rd <- Rr
@@ -682,7 +730,11 @@ func (cpu *CPU) Execute(i Instr) {
 		} else {
 			cpu.clear_n()
 		}
-		if r > 0xff { cpu.set_v() } else { cpu.clear_v() }
+		if r > 0xff {
+			cpu.set_v()
+		} else {
+			cpu.clear_v()
+		}
 		cpu.dmem[i.dest] = byte(r)
 		return
 	case INSN_OR:
@@ -718,7 +770,7 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_POP:
 		// Rd <- Stack
-		cpu.dmem[i.dest] = cpu.dmem[cpu.sp.current() + 1]
+		cpu.dmem[i.dest] = cpu.dmem[cpu.sp.current()+1]
 		cpu.sp.inc(1)
 		return
 	case INSN_PUSH:
@@ -743,17 +795,17 @@ func (cpu *CPU) Execute(i Instr) {
 	case INSN_RET:
 		// PC <- Stack
 		// r29
-		h := int16(cpu.dmem[cpu.sp.current() + 1])
+		h := int16(cpu.dmem[cpu.sp.current()+1])
 		cpu.sp.inc(1)
 		// r 28
-		l := int16(cpu.dmem[cpu.sp.current() + 1])
+		l := int16(cpu.dmem[cpu.sp.current()+1])
 		cpu.sp.inc(1)
 		cpu.pc = ((h << 8) | l)
 		fmt.Printf("%.4x\n", cpu.pc)
 		return
 	case INSN_RETI:
 		// PC <- Stack, enable interrupts
-		low := cpu.dmem[cpu.sp.current() - 1]
+		low := cpu.dmem[cpu.sp.current()-1]
 		high := cpu.dmem[cpu.sp.current()]
 		cpu.pc = b2i16little([]byte{high, low})
 		cpu.sp.inc(2)
@@ -764,10 +816,9 @@ func (cpu *CPU) Execute(i Instr) {
 		// The C Flag is shifted into bit 7 of Rd.
 		// Bit 0 is shifted into the C Flag.
 		// current C
-		c := cpu.dmem[cpu.sr] & 0x01
 		// new C flag
 		x := cpu.dmem[i.dest] & 0x01
-		r := (c << 7) | (cpu.dmem[i.dest] >> 1)
+		r := (cpu.get_c() << 7) | (cpu.dmem[i.dest] >> 1)
 		cpu.dmem[i.dest] = r
 		if x == 1 {
 			cpu.set_c()
@@ -790,9 +841,38 @@ func (cpu *CPU) Execute(i Instr) {
 		x := cpu.dmem[i.dest] & 0x01
 		r := cpu.dmem[i.dest] >> 1
 		cpu.dmem[i.dest] = r
-		if x == 1 { cpu.set_c() } else { cpu.clear_c() }
-		if r == 0 { cpu.set_z() } else { cpu.clear_z() }
+		if x == 1 {
+			cpu.set_c()
+		} else {
+			cpu.clear_c()
+		}
+		if r == 0 {
+			cpu.set_z()
+		} else {
+			cpu.clear_z()
+		}
 		cpu.clear_n()
+		return
+	case INSN_LSL:
+		// logical shift left Rd
+		x := cpu.dmem[i.dest] & 0x80 >> 7
+		r := cpu.dmem[i.dest] << 1
+		cpu.dmem[i.dest] = r
+		if x == 1 {
+			cpu.set_c()
+		} else {
+			cpu.clear_c()
+		}
+		if r == 0 {
+			cpu.set_z()
+		} else {
+			cpu.clear_z()
+		}
+		if (r&0x80)>>7 == 1 {
+			cpu.set_n()
+		} else {
+			cpu.clear_n()
+		}
 		return
 	case INSN_SUB:
 		// Rd <- Rd - Rr
@@ -804,7 +884,7 @@ func (cpu *CPU) Execute(i Instr) {
 			cpu.set_c()
 		} else {
 			cpu.clear_c()
-		}		
+		}
 		if r == 0 {
 			cpu.set_z()
 		} else {
@@ -821,7 +901,7 @@ func (cpu *CPU) Execute(i Instr) {
 		// Rd = Rd - Rr - C
 		d := cpu.dmem[i.dest]
 		s := cpu.dmem[i.source]
-		c := cpu.dmem[cpu.sr] & 0x01
+		c := cpu.get_c()
 		r := d - s - c
 		fmt.Printf("%.4x\t%.4x\t%.4x\n", d, s, r)
 		if (s + c) > d {
@@ -861,7 +941,7 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_SBCI:
 		// Rd <- Rd - K - C
-		c := byte(cpu.dmem[cpu.sr] & 0x01)
+		c := byte(cpu.get_c())
 		if (i.kdata + c) > cpu.dmem[i.dest] {
 			cpu.set_c()
 		} else {
@@ -900,64 +980,54 @@ func (cpu *CPU) Execute(i Instr) {
 		}
 		return
 	case INSN_STX:
-		x := uint16(cpu.dmem[27])<<8 | uint16(cpu.dmem[26])
-		cpu.dmem[x] = cpu.dmem[i.source]
+		cpu.dmem[cpu.xAddr()] = cpu.dmem[i.source]
 		return
 	case INSN_STXP:
 		// (X) <- Rr, X <- X + 1
 		// 26 = low byte, 27 = high byte
-		x :=  uint16(cpu.dmem[27])<<8 | uint16(cpu.dmem[26])
-		cpu.dmem[x] = cpu.dmem[i.source]
+		cpu.dmem[cpu.xAddr()] = cpu.dmem[i.source]
 		// post-increment
-		cpu.dmem[26] += 1
+		cpu.dmem[x_low] += 1
 		return
 	case INSN_STXM:
 		// pre-decrement
-		cpu.dmem[26] -= 1
-		x := uint16(cpu.dmem[27])<<8 | uint16(cpu.dmem[26])
-		cpu.dmem[x] = cpu.dmem[i.source]
+		cpu.dmem[x_low] -= 1
+		cpu.dmem[cpu.xAddr()] = cpu.dmem[i.source]
 		return
 	case INSN_STY:
-		y := uint16(cpu.dmem[29])<<8 | uint16(cpu.dmem[28])
-		cpu.dmem[y] = cpu.dmem[i.source]
+		cpu.dmem[cpu.yAddr()] = cpu.dmem[i.source]
 		return
 	case INSN_STYP:
-		y := uint16(cpu.dmem[29])<<8 | uint16(cpu.dmem[28])
-		cpu.dmem[y] = cpu.dmem[i.source]
+		cpu.dmem[cpu.yAddr()] = cpu.dmem[i.source]
 		// post-increment
-		cpu.dmem[28] += 1
+		cpu.dmem[y_low] += 1
 		return
 	case INSN_STYM:
 		// pre-decrement
-		cpu.dmem[28] -= 1
-		y := uint16(cpu.dmem[29])<<8 | uint16(cpu.dmem[28])
-		cpu.dmem[y] = cpu.dmem[i.source]
+		cpu.dmem[y_low] -= 1
+		cpu.dmem[cpu.yAddr()] = cpu.dmem[i.source]
 		return
 	case INSN_STDY:
 		// (Y) <- Rr
-		y := uint16(cpu.dmem[29]) << 8 | uint16(cpu.dmem[28])
-		fmt.Printf("%.4x\n", (y+i.offset))
-		cpu.dmem[y+i.offset] = cpu.dmem[i.source]
+		y := cpu.yAddr() + i.offset
+		cpu.dmem[y] = cpu.dmem[i.source]
 		return
 	case INSN_STZ:
-		z := uint16(cpu.dmem[31])<<8 | uint16(cpu.dmem[30])
-		cpu.dmem[z] = cpu.dmem[i.source]
+		cpu.dmem[cpu.zAddr()] = cpu.dmem[i.source]
 		return
 	case INSN_STZP:
-		z := uint16(cpu.dmem[31])<<8 | uint16(cpu.dmem[30])
-		cpu.dmem[z] = cpu.dmem[i.source]
+		cpu.dmem[cpu.zAddr()] = cpu.dmem[i.source]
 		// post-increment
-		cpu.dmem[30] += 1
+		cpu.dmem[z_low] += 1
 		return
 	case INSN_STZM:
 		// pre-decrement
-		cpu.dmem[30] -= 1
-		z := uint16(cpu.dmem[31])<<8 | uint16(cpu.dmem[30])
-		cpu.dmem[z] = cpu.dmem[i.source]
+		cpu.dmem[z_low] -= 1
+		cpu.dmem[cpu.zAddr()] = cpu.dmem[i.source]
 		return
 	case INSN_STDZ:
-		z := uint16(cpu.dmem[31]) <<8 | uint16(cpu.dmem[30])
-		cpu.dmem[z+i.offset] = cpu.dmem[i.source]
+		z := cpu.zAddr() + i.offset
+		cpu.dmem[z] = cpu.dmem[i.source]
 		return
 	default:
 		fmt.Println("I dunno.")

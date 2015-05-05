@@ -390,13 +390,18 @@ func dissAssemble(b []byte) Instr {
 	case INSN_LPM:
 		// 1001 0101 1100 1000
 		// XXX ToDo: not tested
-		// i.dest = 0
+		inst.dest = 0
 		fmt.Printf("%.4x\tlpm\n", b2u16big(b))
 		return inst
 	case INSN_LSR:
 		//1001 010d dddd 0110
 		inst.dest = ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
 		fmt.Printf("%.4x\tlsr\tr%d\n", b2u16big(b), inst.dest)
+		return inst
+	case INSN_LSL:
+		//1001 11dd dddd 0110
+		inst.dest = ((b[1] & 0x03) << 4) | ((b[0] & 0xf0) >> 4)
+		fmt.Printf("%.4x\tlsl\tr%d\n", b2u16big(b), inst.dest)
 		return inst
 	case INSN_MOV:
 		// 0010 11rd dddd rrrr

@@ -390,6 +390,13 @@ var OpCodeLookUpTable = []OpCode{
 		label:    INSN_LSR,
 	},
 	OpCode{
+		mnemonic: "lsl",
+		mask:     0xfe0f,
+		value:    0x9c06,
+		family:   BitWise,
+		label:    INSN_LSL,
+	},
+	OpCode{
 		mnemonic: "mov",
 		mask:     0xfc00,
 		value:    0x2c00,
