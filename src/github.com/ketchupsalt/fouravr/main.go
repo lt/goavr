@@ -29,9 +29,9 @@ func main() {
 		fmt.Printf("%.4x\n", x)
 		op := lookUp(u16lil2byte(uint16(x)))
 		fmt.Println(op)
-		os.Exit(0);
+		os.Exit(0)
 	}
-	
+
 	if fileName == "" {
 		//fileName = "/Users/erin/codebase/fouravr/Demo/firmware/main.elf"
 		// JMP

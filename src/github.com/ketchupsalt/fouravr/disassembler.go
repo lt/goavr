@@ -12,7 +12,7 @@ func dissAssemble(b []byte) Instr {
 		3: 30,
 	}
 	// print where it was, not where it is now.
-	fmt.Printf("pc: %.4x\t", (cpu.pc -2))
+	fmt.Printf("pc: %.4x\t", (cpu.pc - 2))
 	m := lookUp(b)
 	inst := Instr{family: m.family, label: m.label}
 	switch m.label {
@@ -576,7 +576,7 @@ func lookUp(raw []byte) OpCode {
 func getOffset(b []byte) uint16 {
 	o0 := ((b[1] & 0x20) << 1) | ((b[1] & 0x0c) >> 2)
 	o1 := b[0] & 0x07
-	o := o0 << 3 | o1
+	o := o0<<3 | o1
 	return uint16(o)
 }
 

@@ -11,7 +11,7 @@ const (
 
 const (
 	INSN_UNK = iota
-	INSN_ADC 
+	INSN_ADC
 	INSN_ADD
 	INSN_ADIW
 	INSN_AND

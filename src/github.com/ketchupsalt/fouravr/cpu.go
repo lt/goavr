@@ -21,7 +21,6 @@ var programEnd int16
 
 var bitMasks = []byte{1, 2, 4, 8, 16, 32, 64, 128}
 
-
 type CPU struct {
 	pc   int16
 	sp   StackPointer
@@ -60,11 +59,11 @@ func (cpu *CPU) get_n() byte { return (cpu.dmem[cpu.sr] & bitMasks[2]) >> 2 }
 func (cpu *CPU) get_z() byte { return (cpu.dmem[cpu.sr] & bitMasks[1]) >> 1 }
 func (cpu *CPU) get_c() byte { return (cpu.dmem[cpu.sr] & bitMasks[0]) }
 
-
 // Get the address in the Z register
 func (cpu *CPU) zAddr() uint16 { return b2u16little([]byte{cpu.dmem[z_low], cpu.dmem[z_high]}) }
 func (cpu *CPU) xAddr() uint16 { return b2u16little([]byte{cpu.dmem[x_low], cpu.dmem[x_high]}) }
 func (cpu *CPU) yAddr() uint16 { return b2u16little([]byte{cpu.dmem[y_low], cpu.dmem[y_high]}) }
+
 /*
 Golang Logical Operators: (because I'm tired of looking this shit up)
 +    ADD

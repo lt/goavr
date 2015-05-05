@@ -4,7 +4,7 @@ package main
 
 type StackPointer struct {
 	high uint8
-	low uint8
+	low  uint8
 }
 
 func (sp *StackPointer) inc(x uint16) {
