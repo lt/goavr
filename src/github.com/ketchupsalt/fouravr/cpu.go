@@ -17,12 +17,12 @@ const (
 	z_high
 )
 
-var programEnd int16
+var programEnd uint16
 
 var bitMasks = []byte{1, 2, 4, 8, 16, 32, 64, 128}
 
 type CPU struct {
-	pc   int16
+	pc   uint16
 	sp   StackPointer
 	sr   byte
 	imem Memory
@@ -63,6 +63,10 @@ func (cpu *CPU) get_c() byte { return (cpu.dmem[cpu.sr] & bitMasks[0]) }
 func (cpu *CPU) zAddr() uint16 { return b2u16little([]byte{cpu.dmem[z_low], cpu.dmem[z_high]}) }
 func (cpu *CPU) xAddr() uint16 { return b2u16little([]byte{cpu.dmem[x_low], cpu.dmem[x_high]}) }
 func (cpu *CPU) yAddr() uint16 { return b2u16little([]byte{cpu.dmem[y_low], cpu.dmem[y_high]}) }
+
+// Massaging the signed offset into the unsigned cpu to branch
+
+func (cpu *CPU) Branch(offset int16)  { cpu.pc = (cpu.pc + uint16(offset)) % 8192}
 
 /*
 Golang Logical Operators: (because I'm tired of looking this shit up)
@@ -143,7 +147,7 @@ func (cpu *CPU) Interactive() {
 		case "p":
 			fmt.Println(cpu.imem.Dump())
 		case "j":
-			var o int16
+			var o uint16
 			fmt.Println("Enter pc:")
 			fmt.Scanf("%x", &o)
 			for cpu.pc < (o + 2) {
@@ -164,7 +168,7 @@ func (cpu *CPU) Interactive() {
 					break
 				}
 			}
-			for i := 1; i < (n + 1); i++ {
+			for i := 0; i < n; i++ {
 				cpu.Step()
 				if cpu.pc == programEnd {
 					break
@@ -188,12 +192,13 @@ func (cpu *CPU) Execute(i Instr) {
 		cpu.clear_i()
 		return
 	case INSN_CLT:
-		// Clear global interrupt
 		cpu.clear_t()
 		return
 	case INSN_SET:
-		// Clear global interrupt
 		cpu.set_t()
+		return
+	case INSN_SEC:
+		cpu.set_c()
 		return
 	case INSN_JMP:
 		// we all know this doesn't work because
@@ -202,11 +207,12 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_IJMP:
 		// PC <- Z(15:0)
-		cpu.pc = int16(cpu.zAddr() << 1)
+		// shift one bit because word addressing something something
+		cpu.pc = cpu.zAddr() << 1
 		return
 	case INSN_RJMP:
 		// PC <- PC + k + 1
-		cpu.pc = cpu.pc + i.k16
+		cpu.Branch(i.k16)
 		return
 	case INSN_ADD:
 		// Rd <- Rd + Rr
@@ -319,7 +325,7 @@ func (cpu *CPU) Execute(i Instr) {
 	case INSN_CBI:
 		// I/O(A,b) <- 0
 		cpu.dmem[i.ioaddr] ^= bitMasks[i.registerBit]
-		fmt.Printf("%.8b\n", cpu.dmem[i.ioaddr])
+		//fmt.Printf("%.8b\n", cpu.dmem[i.ioaddr])
 		return
 	case INSN_SBIC:
 		// If I/O(A,b) = 0 then PC <- PC + 2 (or 3) else PC <- PC + 1
@@ -437,53 +443,53 @@ func (cpu *CPU) Execute(i Instr) {
 	case INSN_BRCC:
 		// Branch if carry cleared
 		if cpu.get_c() == 0 {
-			cpu.pc += i.k16 //+1
+			cpu.Branch(i.k16)
 		}
 		return
 	case INSN_BRCS:
 		// Branch if carry set
 		if cpu.get_c() == 1 {
-			cpu.pc += i.k16
+			cpu.Branch(i.k16)
 		}
 		return
 	case INSN_BREQ:
 		//if Rd = Rr(Z=1) then PC <- PC + k + 1
 		if cpu.get_z() == 1 {
-			cpu.pc += i.k16
+			cpu.Branch(i.k16)
 		}
 		return
 	case INSN_BRNE:
 		// if (Z = 0) then PC <-  PC + k + 1
 		if cpu.get_z() == 0 {
-			cpu.pc += i.k16 //+1
+			cpu.Branch(i.k16)
 		}
 		return
 	case INSN_BRGE:
 		// if Rd >= Rr then PC += k
 		s := (cpu.dmem[cpu.sr] & bitMasks[4]) >> 4
 		if s == 0 {
-			cpu.pc += i.k16 //+1
+			cpu.Branch(i.k16)
 		}
 		return
 	case INSN_BRPL:
 		// if (N = 0) then PC <-  PC + k + 1
 		n := (cpu.dmem[cpu.sr] & bitMasks[2]) >> 2
 		if n == 0 {
-			cpu.pc += i.k16 //+1
+			cpu.Branch(i.k16)
 		}
 		return
 	case INSN_BRTC:
 		// if T = 0 then PC <- PC + k + 1
 		t := (cpu.dmem[cpu.sr] & bitMasks[6]) >> 6
 		if t == 0 {
-			cpu.pc += i.k16 //+1
+			cpu.Branch(i.k16)
 		}
 		return
 	case INSN_BRTS:
 		// if T = 1 then PC <- PC + k + 1
 		t := (cpu.dmem[cpu.sr] & bitMasks[6]) >> 6
 		if t == 1 {
-			cpu.pc += i.k16 //+1
+			cpu.Branch(i.k16)
 		}
 		return
 	case INSN_COM:
@@ -636,13 +642,13 @@ func (cpu *CPU) Execute(i Instr) {
 	case INSN_LDDY:
 		// Rd <- (Y + q)
 		y := cpu.yAddr() + i.offset
-		fmt.Printf("%.4x\t%.4x\n", y, cpu.dmem[y])
+		//fmt.Printf("%.4x\t%.4x\n", y, cpu.dmem[y])
 		cpu.dmem[i.dest] = cpu.dmem[y]
 		return
 	case INSN_LDDZ:
 		// Rd <- (Z + q)
 		z := cpu.zAddr() + i.offset
-		fmt.Printf("%.4x\t%.4x\n", z, cpu.dmem[z])
+		fmt.Printf("%.4x\n", z)
 		cpu.dmem[i.dest] = cpu.dmem[z]
 		return
 	case INSN_LDX:
@@ -754,9 +760,10 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_ORI:
 		// Rd <- Rd | K
+		cpu.clear_v()
 		r := cpu.dmem[i.dest] | byte(i.kdata)
 		cpu.dmem[i.dest] = r
-		if ((r & 12) >> 7) == 1 {
+		if ((r & 0x80) >> 7) == 1 {
 			cpu.set_n()
 		} else {
 			cpu.clear_n()
@@ -789,24 +796,31 @@ func (cpu *CPU) Execute(i Instr) {
 		cpu.sp.dec(1)
 		// says +1, but that generates the wrong value
 		// because the PC is incremented automaticaly anyway
-		cpu.pc = cpu.pc + i.k16 //+ 1
+		cpu.Branch(i.k16)
+		return
+	case INSN_ICALL:	
+		cpu.dmem[cpu.sp.current()] = byte(cpu.pc & 0x00ff)
+		cpu.sp.dec(1)
+		cpu.dmem[cpu.sp.current()] = byte(cpu.pc >> 8)
+		cpu.sp.dec(1)
+		cpu.pc = cpu.zAddr() << 1
 		return
 	case INSN_RET:
 		// PC <- Stack
 		// r29
-		h := int16(cpu.dmem[cpu.sp.current()+1])
+		h := cpu.dmem[cpu.sp.current()+1]
 		cpu.sp.inc(1)
 		// r 28
-		l := int16(cpu.dmem[cpu.sp.current()+1])
+		l := cpu.dmem[cpu.sp.current()+1]
 		cpu.sp.inc(1)
-		cpu.pc = ((h << 8) | l)
+		cpu.pc = uint16((h << 8) | l)
 		fmt.Printf("%.4x\n", cpu.pc)
 		return
 	case INSN_RETI:
 		// PC <- Stack, enable interrupts
 		low := cpu.dmem[cpu.sp.current()-1]
 		high := cpu.dmem[cpu.sp.current()]
-		cpu.pc = b2i16little([]byte{high, low})
+		cpu.pc = b2u16little([]byte{high, low})
 		cpu.sp.inc(2)
 		cpu.set_i()
 		return

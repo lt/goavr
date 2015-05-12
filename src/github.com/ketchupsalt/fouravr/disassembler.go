@@ -17,7 +17,7 @@ func dissAssemble(b []byte) Instr {
 	inst := Instr{family: m.family, label: m.label}
 	switch m.label {
 	case INSN_UNK:
-		fmt.Printf("BZZZT! THANKS FOR PLAYING!", b2u16big(b))
+		fmt.Printf("\nBZZZT! THANKS FOR PLAYING! %.4x\n", b2u16big(b))
 		return inst
 	case INSN_NOP:
 		fmt.Printf("%.4x\tnop\n", b2u16big(b))
@@ -30,6 +30,9 @@ func dissAssemble(b []byte) Instr {
 		return inst
 	case INSN_SET:
 		fmt.Printf("%.4x\tset\n", b2u16big(b))
+		return inst
+	case INSN_SEC:
+		fmt.Printf("%.4x\tsec\n", b2u16big(b))
 		return inst
 	case INSN_ADC:
 		// 0001 11rd dddd rrrr
@@ -72,10 +75,10 @@ func dissAssemble(b []byte) Instr {
 		k := (uint32(b[1]&0x0f)<<8 | uint32(b[0]))
 		if ((k & 0x0800) >> 11) == 1 {
 			inst.k16 = int16((k + 0xf000) << 1)
-			fmt.Printf("%.4x\trcall\t.%d\t;%.4x\n", b2u16big(b), inst.k16, (inst.k16 + cpu.pc))
+			fmt.Printf("%.4x\trcall\t.%d\t;%.4x\n", b2u16big(b), inst.k16, (cpu.pc + uint16(inst.k16)) % 8192)
 		} else {
 			inst.k16 = int16(k << 1)
-			fmt.Printf("%.4x\trcall\t.+%d\t;%.4x\n", b2u16big(b), inst.k16, (inst.k16 + cpu.pc))
+			fmt.Printf("%.4x\trcall\t.+%d\t;%.4x\n", b2u16big(b), inst.k16, (cpu.pc + uint16(inst.k16)) % 8192)
 		}
 		return inst
 	case INSN_SBI:
@@ -204,11 +207,23 @@ func dissAssemble(b []byte) Instr {
 		k := (b2u16little(b) & 0x03f8) >> 3
 		if ((k & 0x40) >> 6) == 1 {
 			inst.k16 = int16((k + 0xff80) << 1)
+		fmt.Printf("%.4x\tbrcs\t.+%d\n", b2u16big(b), inst.k16)
 		} else {
 			inst.k16 = int16(k << 1)
+		fmt.Printf("%.4x\tbrcs\t.%d\n", b2u16big(b), inst.k16)
 		}
-		fmt.Printf("%.4x\tbrcs\t.+%d\n", b2u16big(b), inst.k16)
 		return inst
+	case INSN_BRMI:
+		// 1111 00kk kkkk k010
+		k := (b2u16little(b) & 0x03f8) >> 3
+		if ((k & 0x40) >> 6) == 1 {
+			inst.k16 = int16((k + 0xff80) << 1)
+		fmt.Printf("%.4x\tbrmi\t.+%d\n", b2u16big(b), inst.k16)
+		} else {
+			inst.k16 = int16(k << 1)
+		fmt.Printf("%.4x\tbrmi\t.%d\n", b2u16big(b), inst.k16)
+		}
+		return inst		
 	case INSN_BRGE:
 		// 1111 01kk kkkk k100
 		k := (b2u16little(b) & 0x03f8) >> 3
@@ -448,6 +463,9 @@ func dissAssemble(b []byte) Instr {
 		inst.source = ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
 		fmt.Printf("%.4x\tpush\tr%d\n", b2u16big(b), inst.source)
 		return inst
+	case INSN_ICALL:
+		fmt.Printf("%.4x\ticall\n", b2u16big(b))
+		return inst
 	case INSN_RET:
 		fmt.Printf("%.4x\tret\n", b2u16big(b))
 		return inst
@@ -574,9 +592,10 @@ func lookUp(raw []byte) OpCode {
 }
 
 func getOffset(b []byte) uint16 {
-	o0 := ((b[1] & 0x20) << 1) | ((b[1] & 0x0c) >> 2)
-	o1 := b[0] & 0x07
-	o := o0<<3 | o1
+	o0 := b[1] & 0x20
+	o1 := (b[1] & 0x0c) << 1
+	o2 := b[0] & 0x07
+	o := o0 | o1 | o2
 	return uint16(o)
 }
 

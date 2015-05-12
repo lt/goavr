@@ -43,7 +43,7 @@ func getStuff(file *elf.File) {
 	check(err)
 	data = append(data, ret...)
 	// get the location of the last instruction.
-	programEnd = int16(len(data) - 2)
+	programEnd = uint16(len(data) - 2)
 	// get data stuff
 	for i, s := range file.Sections {
 		if s.SectionHeader.Name == ".data" {

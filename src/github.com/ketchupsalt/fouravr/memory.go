@@ -12,7 +12,7 @@ var current []byte
 // Both data memory and program memory inherit
 // from here.
 
-type Memory [2048]byte
+type Memory [8192]byte
 
 // Use Fetch() for grabbing 2 bytes from program memory.
 // Increments the program counter.
@@ -31,6 +31,7 @@ func (mem *Memory) Read(loc int) byte {
 
 func (mem *Memory) LoadProgram(data []byte) {
 	for i, b := range data {
+		//fmt.Println(i)
 		mem[i] = b
 	}
 }
@@ -59,7 +60,7 @@ func (mem *Memory) printRegs() {
 
 func (mem *Memory) printStack() {
 	var stack []string
-	if cpu.sp.current() != 0 {
+	if cpu.sp.current() != 0 && cpu.sp.current() < 0x0460 {
 		for _, v := range mem[(cpu.sp.current() + 1):0x0460] {
 			stack = append(stack, fmt.Sprintf("%.2x ", v))
 		}

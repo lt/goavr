@@ -11,7 +11,7 @@ const (
 
 const (
 	INSN_UNK = iota
-	INSN_ADC
+	INSN_ADC 
 	INSN_ADD
 	INSN_ADIW
 	INSN_AND
@@ -299,6 +299,13 @@ var OpCodeLookUpTable = []OpCode{
 		label:    INSN_SET,
 	},
 	OpCode{
+		mnemonic: "sec",
+		mask:     0xffff,
+		value:    0x9408,
+		family:   BitWise,
+		label:    INSN_SEC,
+	},
+	OpCode{
 		mnemonic: "sbi",
 		mask:     0xff00,
 		value:    0x9a00,
@@ -346,6 +353,13 @@ var OpCodeLookUpTable = []OpCode{
 		value:    0xf401,
 		family:   Branches,
 		label:    INSN_BRNE,
+	},
+	OpCode{
+		mnemonic: "brmi",
+		mask:     0xfc07,
+		value:    0xf002,
+		family:   Branches,
+		label:    INSN_BRMI,
 	},
 	OpCode{
 		mnemonic: "brpl",
@@ -437,6 +451,13 @@ var OpCodeLookUpTable = []OpCode{
 		value:    0x9518,
 		family:   Branches,
 		label:    INSN_RETI,
+	},
+	OpCode{
+		mnemonic: "icall",
+		mask:     0xffff,
+		value:    0x9509,
+		family:   Branches,
+		label:    INSN_ICALL,
 	},
 	OpCode{
 		mnemonic: "ret",
