@@ -404,11 +404,46 @@ var OpCodeLookUpTable = []OpCode{
 		label:    INSN_SBC,
 	},
 	OpCode{
+		mnemonic: "com",
+		mask:     0xfe0f,
+		value:    0x9400,
+		family:   Arithmetic,
+		label:    INSN_COM,
+	},
+	OpCode{
+		mnemonic: "neg",
+		mask:     0xfe0f,
+		value:    0x9401,
+		family:   Arithmetic,
+		label:    INSN_NEG,
+	},
+	OpCode{
+		mnemonic: "inc",
+		mask:     0xfe0f,
+		value:    0x9403,
+		family:   Arithmetic,
+		label:    INSN_INC,
+	},
+	OpCode{
+		mnemonic: "asr",
+		mask:     0xfe0f,
+		value:    0x9405,
+		family:   BitWise,
+		label:    INSN_ASR,
+	},
+	OpCode{
 		mnemonic: "lsr",
 		mask:     0xfe0f,
 		value:    0x9406,
 		family:   BitWise,
 		label:    INSN_LSR,
+	},
+	OpCode{
+		mnemonic: "ror",
+		mask:     0xfe0f,
+		value:    0x9407,
+		family:   BitWise,
+		label:    INSN_ROR,
 	},
 	OpCode{
 		mnemonic: "lsl",
@@ -423,13 +458,6 @@ var OpCodeLookUpTable = []OpCode{
 		value:    0x2c00,
 		family:   Transfers,
 		label:    INSN_MOV,
-	},
-	OpCode{
-		mnemonic: "ror",
-		mask:     0xfe0f,
-		value:    0x9407,
-		family:   BitWise,
-		label:    INSN_ROR,
 	},
 	OpCode{
 		mnemonic: "or",
@@ -572,13 +600,6 @@ var OpCodeLookUpTable = []OpCode{
 		label:    INSN_BRTS,
 	},
 	OpCode{
-		mnemonic: "com",
-		mask:     0xfe0f,
-		value:    0x9400,
-		family:   Arithmetic,
-		label:    INSN_COM,
-	},
-	OpCode{
 		mnemonic: "sbrc",
 		mask:     0xfe08,
 		value:    0xfc00,
@@ -593,13 +614,6 @@ var OpCodeLookUpTable = []OpCode{
 		label:    INSN_SBR,
 	},
 	OpCode{
-		mnemonic: "neg",
-		mask:     0xfe0f,
-		value:    0x9401,
-		family:   Arithmetic,
-		label:    INSN_NEG,
-	},
-	OpCode{
 		mnemonic: "sub",
 		mask:     0xfc00,
 		value:    0x1800,
@@ -612,13 +626,6 @@ var OpCodeLookUpTable = []OpCode{
 		value:    0x940a,
 		family:   Arithmetic,
 		label:    INSN_DEC,
-	},
-	OpCode{
-		mnemonic: "inc",
-		mask:     0xfe0f,
-		value:    0x9403,
-		family:   Arithmetic,
-		label:    INSN_INC,
 	},
 	OpCode{
 		mnemonic: "mul",

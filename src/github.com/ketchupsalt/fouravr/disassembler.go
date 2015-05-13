@@ -53,17 +53,6 @@ func dissAssemble(b []byte) Instr {
 		inst.source = ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
 		fmt.Printf("%.4x\tout\t0x%.2x, r%d\t\t;%d\n", b2u16big(b), inst.ioaddr, inst.source, inst.ioaddr)
 		return inst
-	case INSN_RJMP:
-		// 1100 kkkk kkkk kkkk
-		k := (uint32(b[1]&0x0f)<<8 | uint32(b[0]))
-		if ((k & 0x800) >> 11) == 1 {
-			inst.k16 = int16((k + 0xf000) << 1)
-			fmt.Printf("%.4x\trjmp\t.%d\n", b2u16big(b), inst.k16)
-		} else {
-			inst.k16 = int16(k << 1)
-			fmt.Printf("%.4x\trjmp\t.+%d\n", b2u16big(b), inst.k16)
-		}
-		return inst
 	case INSN_LDI:
 		// 1110 KKKK dddd KKKK
 		inst.kdata = ((b[1] & 0x0f) << 4) | (b[0] & 0x0f)
@@ -75,10 +64,10 @@ func dissAssemble(b []byte) Instr {
 		k := (uint32(b[1]&0x0f)<<8 | uint32(b[0]))
 		if ((k & 0x0800) >> 11) == 1 {
 			inst.k16 = int16((k + 0xf000) << 1)
-			fmt.Printf("%.4x\trcall\t.%d\t;%.4x\n", b2u16big(b), inst.k16, (cpu.pc + uint16(inst.k16)) % 8192)
+			fmt.Printf("%.4x\trcall\t.%d\t;%.4x\n", b2u16big(b), inst.k16, (cpu.pc+uint16(inst.k16))%8192)
 		} else {
 			inst.k16 = int16(k << 1)
-			fmt.Printf("%.4x\trcall\t.+%d\t;%.4x\n", b2u16big(b), inst.k16, (cpu.pc + uint16(inst.k16)) % 8192)
+			fmt.Printf("%.4x\trcall\t.+%d\t;%.4x\n", b2u16big(b), inst.k16, (cpu.pc+uint16(inst.k16))%8192)
 		}
 		return inst
 	case INSN_SBI:
@@ -131,16 +120,27 @@ func dissAssemble(b []byte) Instr {
 		return inst
 	case INSN_STS:
 		// 1001 001d dddd 0000 kkkk kkkk kkkk kkkk
-		inst.dest = ((b[1]&0x01)<<4 | ((b[0] & 0xf0) >> 4))
+		inst.source = ((b[1]&0x01)<<4 | ((b[0] & 0xf0) >> 4))
 		cpu.imem.Fetch()
 		inst.k16 = b2i16little(current)
-		fmt.Printf("%.4x\tsts\t0x%.4x, r%d\n", b2u16big(b), inst.k16, inst.dest)
+		fmt.Printf("%.4x\tsts\t0x%.4x, r%d\n", b2u16big(b), inst.k16, inst.source)
 		return inst
 	case INSN_LDS:
 		inst.dest = ((b[1]&0x01)<<4 | ((b[0] & 0xf0) >> 4))
 		cpu.imem.Fetch()
 		inst.k16 = b2i16little(current)
 		fmt.Printf("%.4x\tlds\tr%d, 0x%.4x\n", b2u16big(b), inst.dest, inst.k16)
+		return inst
+	case INSN_RJMP:
+		// 1100 kkkk kkkk kkkk
+		k := (uint32(b[1]&0x0f)<<8 | uint32(b[0]))
+		if ((k & 0x800) >> 11) == 1 {
+			inst.k16 = int16((k + 0xf000) << 1)
+			fmt.Printf("%.4x\trjmp\t.%d\n", b2u16big(b), inst.k16)
+		} else {
+			inst.k16 = int16(k << 1)
+			fmt.Printf("%.4x\trjmp\t.+%d\n", b2u16big(b), inst.k16)
+		}
 		return inst
 	case INSN_IJMP:
 		// 1001 0100 0000 1001
@@ -153,9 +153,19 @@ func dissAssemble(b []byte) Instr {
 		k2 = uint32(b[0]&0xf0) << 12
 		cpu.imem.Fetch()
 		k3 = uint32(current[1])<<8 | uint32(current[0])
-		inst.k32 = k1 | k2 | k3
+		inst.k32 = (k1 | k2 | k3) << 1
 		fmt.Printf("%.4x\tjmp\t0x%.8x\t;%d\n", b2u16big(b), inst.k32, inst.k32)
 		return inst
+	case INSN_CALL:
+		// 1001 010k kkkk 111k kkkk kkkk kkkk kkkk
+		var k1, k2, k3 uint32
+		k1 = uint32(b[1]&0x01) << 20
+		k2 = uint32(b[0]&0xf0) << 12
+		cpu.imem.Fetch()
+		k3 = uint32(current[1])<<8 | uint32(current[0])
+		inst.k32 = (k1 | k2 | k3) << 1
+		fmt.Printf("%.4x\tcall\t0x%.8x\n", b2u16big(b), inst.k32)
+		return inst		
 	case INSN_ADD:
 		// 0000 11rd dddd rrrr
 		inst.source = (((b[1]&0x02)>>1)<<4 | (b[0] & 0x0f))
@@ -223,7 +233,7 @@ func dissAssemble(b []byte) Instr {
 			inst.k16 = int16(k << 1)
 			fmt.Printf("%.4x\tbrmi\t.+%d\n", b2u16big(b), inst.k16)
 		}
-		return inst		
+		return inst
 	case INSN_BRGE:
 		// 1111 01kk kkkk k100
 		k := (b2u16little(b) & 0x03f8) >> 3
@@ -426,6 +436,11 @@ func dissAssemble(b []byte) Instr {
 		//1001 010d dddd 0110
 		inst.dest = ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
 		fmt.Printf("%.4x\tlsr\tr%d\n", b2u16big(b), inst.dest)
+		return inst
+	case INSN_ASR:
+		//1001 010d dddd 0101
+		inst.dest = ((b[1] & 0x01) << 4) | ((b[0] & 0xf0) >> 4)
+		fmt.Printf("%.4x\tasr\tr%d\n", b2u16big(b), inst.dest)
 		return inst
 	case INSN_LSL:
 		//1001 11dd dddd 0110

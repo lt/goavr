@@ -41,7 +41,7 @@ func (mem *Memory) Dump() string {
 }
 
 // Here but unused.
-func (mem *Memory) Store(i int16, b byte) {
+func (mem *Memory) Store(i uint16, b byte) {
 	mem[i] = b
 }
 
@@ -60,8 +60,9 @@ func (mem *Memory) printRegs() {
 
 func (mem *Memory) printStack() {
 	var stack []string
-	if cpu.sp.current() != 0 && cpu.sp.current() < 0x0460 {
-		for _, v := range mem[(cpu.sp.current() + 1):0x0460] {
+	se := b2u16little(stackEnd) + 1
+	if cpu.sp.current() != 0 && cpu.sp.current() < se {
+		for _, v := range mem[(cpu.sp.current() + 1):se] {
 			stack = append(stack, fmt.Sprintf("%.2x ", v))
 		}
 	}

@@ -245,7 +245,7 @@ func (cpu *CPU) Execute(i Instr) {
 	case INSN_JMP:
 		// we all know this doesn't work because
 		// this version doesn't have a 22bit pc
-		//cpu.pc = i.k32
+		cpu.pc = uint16(i.k32)
 		return
 	case INSN_IJMP:
 		// PC <- Z(15:0)
@@ -382,6 +382,16 @@ func (cpu *CPU) Execute(i Instr) {
 		return
 	case INSN_OUT:
 		// I/O(A) <- Rr
+		switch i.ioaddr {
+		case 0x3e: // high byte
+			if cpu.dmem[i.ioaddr] == 0 {
+				cpu.sp.setStackEnd(cpu.dmem[i.source], 1)
+			}
+		case 0x3d: // low byte
+			if cpu.dmem[i.ioaddr] == 0 {
+				cpu.sp.setStackEnd(cpu.dmem[i.source], 0)
+			}
+		}
 		cpu.dmem[i.ioaddr] = cpu.dmem[i.source]
 		return
 	case INSN_LDI:
@@ -909,6 +919,13 @@ func (cpu *CPU) Execute(i Instr) {
 		cpu.sp.dec(1)
 		cpu.pc = cpu.zAddr() << 1
 		return
+	case INSN_CALL:
+		cpu.dmem[cpu.sp.current()] = byte(cpu.pc & 0x00ff)
+		cpu.sp.dec(1)
+		cpu.dmem[cpu.sp.current()] = byte(cpu.pc >> 8)
+		cpu.sp.dec(1)
+		cpu.pc = uint16(i.k32)
+		return
 	case INSN_RET:
 		// PC <- Stack
 		// r29
@@ -969,6 +986,39 @@ func (cpu *CPU) Execute(i Instr) {
 			cpu.clear_z()
 		}
 		cpu.clear_n()
+		return
+	case INSN_ASR:
+		// Rd >> 1 but bit 7 remains constant. C becomes LSB of Rd.
+		d := cpu.dmem[i.dest]
+		c := d & 0x01
+		b := d & 0x80
+		r := (d >> 1) | b
+		if r == 0 {
+			cpu.set_z()
+		} else {
+			cpu.clear_z()
+		}
+		if c == 1 {
+			cpu.set_c()
+		} else {
+			cpu.clear_c()
+		}
+		if (r & 0x80) == 128 {
+			cpu.set_n()
+		} else {
+			cpu.clear_n()
+		}
+		if (cpu.get_n() ^ cpu.get_c()) == 1 {
+			cpu.set_v()
+		} else {
+			cpu.clear_v()
+		}
+		if (cpu.get_n() ^ cpu.get_v()) == 1 {
+			cpu.set_s()
+		} else {
+			cpu.clear_s()
+		}
+		cpu.dmem[i.dest] = r
 		return
 	case INSN_LSL:
 		// logical shift left Rd
