@@ -355,6 +355,13 @@ var OpCodeLookUpTable = []OpCode{
 		label:    INSN_BRNE,
 	},
 	OpCode{
+		mnemonic: "brlt",
+		mask:     0xfc07,
+		value:    0xf004,
+		family:   Branches,
+		label:    INSN_BRLT,
+	},
+	OpCode{
 		mnemonic: "brmi",
 		mask:     0xfc07,
 		value:    0xf002,

@@ -207,10 +207,10 @@ func dissAssemble(b []byte) Instr {
 		k := (b2u16little(b) & 0x03f8) >> 3
 		if ((k & 0x40) >> 6) == 1 {
 			inst.k16 = int16((k + 0xff80) << 1)
-		fmt.Printf("%.4x\tbrcs\t.+%d\n", b2u16big(b), inst.k16)
+			fmt.Printf("%.4x\tbrcs\t.%d\n", b2u16big(b), inst.k16)
 		} else {
 			inst.k16 = int16(k << 1)
-		fmt.Printf("%.4x\tbrcs\t.%d\n", b2u16big(b), inst.k16)
+			fmt.Printf("%.4x\tbrcs\t.+%d\n", b2u16big(b), inst.k16)
 		}
 		return inst
 	case INSN_BRMI:
@@ -218,10 +218,10 @@ func dissAssemble(b []byte) Instr {
 		k := (b2u16little(b) & 0x03f8) >> 3
 		if ((k & 0x40) >> 6) == 1 {
 			inst.k16 = int16((k + 0xff80) << 1)
-		fmt.Printf("%.4x\tbrmi\t.+%d\n", b2u16big(b), inst.k16)
+			fmt.Printf("%.4x\tbrmi\t.%d\n", b2u16big(b), inst.k16)
 		} else {
 			inst.k16 = int16(k << 1)
-		fmt.Printf("%.4x\tbrmi\t.%d\n", b2u16big(b), inst.k16)
+			fmt.Printf("%.4x\tbrmi\t.+%d\n", b2u16big(b), inst.k16)
 		}
 		return inst		
 	case INSN_BRGE:
@@ -229,10 +229,11 @@ func dissAssemble(b []byte) Instr {
 		k := (b2u16little(b) & 0x03f8) >> 3
 		if ((k & 0x40) >> 6) == 1 {
 			inst.k16 = int16((k + 0xff80) << 1)
+			fmt.Printf("%.4x\tbrge\t.%d\n", b2u16big(b), inst.k16)
 		} else {
 			inst.k16 = int16(k << 1)
+			fmt.Printf("%.4x\tbrge\t.+%d\n", b2u16big(b), inst.k16)
 		}
-		fmt.Printf("%.4x\tbrge\t.%d\n", b2u16big(b), inst.k16)
 		return inst
 	case INSN_BRNE:
 		// 1111 01kk kkkk k001
@@ -245,6 +246,19 @@ func dissAssemble(b []byte) Instr {
 		} else {
 			inst.k16 = int16(k << 1)
 			fmt.Printf("%.4x\tbrne\t.+%d\n", b2u16big(b), inst.k16)
+		}
+		return inst
+	case INSN_BRLT:
+		// 1111 00kk kkkk k100
+		k := (b2u16little(b) & 0x03f8) >> 3
+		// check to see if msb of k is 1
+		// if it is, the result is negative.
+		if ((k & 0x40) >> 6) == 1 {
+			inst.k16 = int16((k + 0xff80) << 1)
+			fmt.Printf("%.4x\tbrlt\t.%d\n", b2u16big(b), inst.k16)
+		} else {
+			inst.k16 = int16(k << 1)
+			fmt.Printf("%.4x\tbrlt\t.+%d\n", b2u16big(b), inst.k16)
 		}
 		return inst
 	case INSN_BREQ:
