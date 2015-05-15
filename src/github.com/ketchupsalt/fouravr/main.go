@@ -19,6 +19,7 @@ func init() {
 }
 
 var cpu CPU
+var npc NPC
 
 func main() {
 
@@ -62,6 +63,12 @@ func main() {
 		fmt.Println(cpu.imem.Dump())
 		os.Exit(0)
 	}
+
+	// Testing!
+	npc.port = ":9999"
+	npc.rx = make(chan []byte)
+	npc.tx = make(chan byte)
+	go npc.Server()
 
 	//mi := dissAssemble(pop(2))
 	// sample JMP instruction 94 0c bb c5
