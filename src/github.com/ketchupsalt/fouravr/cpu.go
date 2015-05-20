@@ -110,6 +110,9 @@ func (cpu *CPU) decZ() {
 
 func (cpu *CPU) Branch(offset int16) { cpu.pc = (cpu.pc + uint16(offset)) % 8192 }
 
+// Get the return value of a function for testing
+func (cpu *CPU) getReturnValue() uint16 { return b2u16little([]byte{cpu.dmem[24], cpu.dmem[25]}) }
+
 /*
 Golang Logical Operators: (because I'm tired of looking this shit up)
 +    ADD
@@ -127,6 +130,19 @@ func (cpu *CPU) Step() {
 	//defer handlePanic()
 	cpu.imem.Fetch()
 	cpu.Execute(dissAssemble(current))
+}
+
+func (cpu *CPU) Run() {
+	for {
+		cpu.Step()
+		cpu.Noise()
+		if cpu.pc == programEnd {
+			break
+		}
+	}
+}
+
+func (cpu *CPU) Noise() {
 	fmt.Printf("pc: %.4x\tsr: %.8b\tsp: %.4x\t\n", cpu.pc, cpu.dmem[cpu.sr], cpu.sp.current())
 	cpu.dmem.printRegs()
 	cpu.dmem.printStack()
@@ -134,10 +150,6 @@ func (cpu *CPU) Step() {
 }
 
 func (cpu *CPU) Interactive() {
-	cpu.sr = 0x3f
-	cpu.sp.high = 0x3e
-	cpu.sp.low = 0x3d
-
 	fmt.Println("Type ? for help.")
 	for {
 		prompt := bufio.NewReader(os.Stdin)
@@ -160,18 +172,14 @@ func (cpu *CPU) Interactive() {
 			fmt.Println("return jumps 5 instructions")
 			fmt.Println("any number /n/ jumps /n/ instructions")
 		case "g":
-			for {
-				cpu.Step()
-				if cpu.pc == programEnd {
-					break
-				}
-			}
+			cpu.Run()
 		case "q":
 			os.Exit(0)
 		case "s":
 			var b string
 			for {
 				cpu.Step()
+				cpu.Noise()
 				fmt.Scanf("%s", &b)
 				if b == "x" {
 					break
@@ -212,6 +220,7 @@ func (cpu *CPU) Interactive() {
 			}
 			for i := 0; i < n; i++ {
 				cpu.Step()
+				cpu.Noise()
 				if cpu.pc == programEnd {
 					break
 				}

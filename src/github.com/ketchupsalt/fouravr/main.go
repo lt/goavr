@@ -9,13 +9,14 @@ import (
 )
 
 var fileName, single string
-var dumpMem, dumpProg bool
+var dumpMem, dumpProg, interActive bool
 
 func init() {
 	flag.StringVar(&single, "s", single, "Parse a single instruction")
 	flag.StringVar(&fileName, "f", fileName, "File path, yo")
 	flag.BoolVar(&dumpMem, "d", false, "Just dump the program memory")
 	flag.BoolVar(&dumpProg, "p", false, "Pretty print the whole file")
+	flag.BoolVar(&interActive, "i", false, "Run the interactive shell")
 }
 
 var cpu CPU
@@ -64,24 +65,23 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Testing!
-	npc.port = ":9999"
-	npc.rx = make(chan []byte)
-	npc.tx = make(chan byte)
-	go npc.Server()
+	// Listens on a port, writes commands to dmem a la UART
+	//npc.port = ":9999"
+	//npc.rx = make(chan []byte)
+	//npc.tx = make(chan byte)
+	//go npc.Server()
 
-	//mi := dissAssemble(pop(2))
-	// sample JMP instruction 94 0c bb c5
-	// 1001 0100 0000 1100 1011 1011 1100 0101
-	//mi := Instr{label: INSN_JMP, family: Branches, }
-
-	// Manually setting the program counter to the start of
-	// the stuff I actually want to step through.
+	// Initial CPU things.
 	cpu.pc = 0
-
-	// Still don't know how to exit the program.
-
-	for cpu.pc != programEnd {
-		cpu.Interactive()
+	cpu.sr = 0x3f
+	cpu.sp.high = 0x3e
+	cpu.sp.low = 0x3d
+	
+	if interActive == true {
+		for cpu.pc != programEnd {
+			cpu.Interactive()
+		}
+	} else {
+		cpu.Run()
 	}
 }
