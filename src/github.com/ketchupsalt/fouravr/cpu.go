@@ -113,6 +113,7 @@ func (cpu *CPU) Branch(offset int16) { cpu.pc = (cpu.pc + uint16(offset)) % 8192
 // Get the return value of a function for testing
 func (cpu *CPU) getReturnValue() uint16 { return b2u16little([]byte{cpu.dmem[24], cpu.dmem[25]}) }
 
+
 /*
 Golang Logical Operators: (because I'm tired of looking this shit up)
 +    ADD
@@ -126,6 +127,7 @@ Golang Logical Operators: (because I'm tired of looking this shit up)
 >>   right shift
 */
 
+
 func (cpu *CPU) Step() {
 	//defer handlePanic()
 	cpu.imem.Fetch()
@@ -135,9 +137,10 @@ func (cpu *CPU) Step() {
 func (cpu *CPU) Run() {
 	for {
 		cpu.Step()
-		cpu.Noise()
 		if cpu.pc == programEnd {
 			break
+			fmt.Println(cpu.getReturnValue())
+			os.Exit(0)
 		}
 	}
 }
@@ -172,7 +175,13 @@ func (cpu *CPU) Interactive() {
 			fmt.Println("return jumps 5 instructions")
 			fmt.Println("any number /n/ jumps /n/ instructions")
 		case "g":
-			cpu.Run()
+			for {
+				cpu.Step()
+				cpu.Noise()
+				if cpu.pc == programEnd {
+					break
+				}
+			}
 		case "q":
 			os.Exit(0)
 		case "s":
