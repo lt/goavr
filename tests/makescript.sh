@@ -1,6 +1,8 @@
 #!/bin/bash 
 
-for i in `echo *`
+BASEPATH=`pwd`/tests
+
+for i in `echo $BASEPATH/*`
 do 
   if [ -d $i ]
     then cd $i

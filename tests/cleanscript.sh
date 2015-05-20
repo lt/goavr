@@ -1,10 +1,12 @@
 #!/bin/bash 
 
-for i in `echo *`
+BASEPATH=`pwd`/tests
+
+for i in `echo $BASEPATH/*`
 do 
-  echo "Cleaning $i"
   if [ -d $i ]
     then cd $i
+    echo "Cleaning $i"
     make clean 
     cd ../
    fi
