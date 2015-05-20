@@ -138,7 +138,6 @@ func (cpu *CPU) Run() {
 	for {
 		cpu.Step()
 		if cpu.pc == programEnd {
-			break
 			fmt.Println(cpu.getReturnValue())
 			os.Exit(0)
 		}
@@ -606,6 +605,12 @@ func (cpu *CPU) Execute(i Instr) {
 			cpu.Branch(i.k16)
 		}
 		return
+	case INSN_BRMI:
+		// if T = 1 then PC <- PC + k + 1
+		if cpu.get_n() == 1 {
+			cpu.Branch(i.k16)
+		}
+		return
 	case INSN_COM:
 		// Rd <- ^Rd
 		r := 0xff - cpu.dmem[i.dest]
@@ -777,7 +782,7 @@ func (cpu *CPU) Execute(i Instr) {
 	case INSN_LDDZ:
 		// Rd <- (Z + q)
 		z := cpu.zAddr() + i.offset
-		fmt.Printf("%.4x\n", z)
+		//fmt.Printf("%.4x\n", z)
 		cpu.dmem[i.dest] = cpu.dmem[z]
 		return
 	case INSN_LDX:
@@ -953,7 +958,6 @@ func (cpu *CPU) Execute(i Instr) {
 		l := uint16(cpu.dmem[cpu.sp.current()+1])
 		cpu.sp.inc(1)
 		cpu.pc = (h << 8) | l
-		fmt.Printf("%.4x\n", cpu.pc)
 		return
 	case INSN_RETI:
 		// PC <- Stack, enable interrupts
@@ -1064,7 +1068,6 @@ func (cpu *CPU) Execute(i Instr) {
 		d := cpu.dmem[i.dest]
 		s := cpu.dmem[i.source]
 		r := d - s
-		fmt.Printf("%.4x\t%.4x\t%.4x\n", d, s, r)
 		if s > d {
 			cpu.set_c()
 		} else {
@@ -1088,7 +1091,6 @@ func (cpu *CPU) Execute(i Instr) {
 		s := cpu.dmem[i.source]
 		c := cpu.get_c()
 		r := d - s - c
-		fmt.Printf("%.4x\t%.4x\t%.4x\n", d, s, r)
 		if (s + c) > d {
 			cpu.set_c()
 		} else {
@@ -1174,7 +1176,6 @@ func (cpu *CPU) Execute(i Instr) {
 	case INSN_MUL:
 		// R1h:R0l <- Rx x Rr
 		r := uint16(cpu.dmem[i.dest]) * uint16(cpu.dmem[i.source])
-		fmt.Printf("%.4x\n", r)
 		cpu.dmem[1] = byte(r & 0xff00 >> 8)
 		cpu.dmem[0] = byte(r & 0x00ff)
 		if (r & 0x8000 >> 15) == 1 {
@@ -1239,7 +1240,7 @@ func (cpu *CPU) Execute(i Instr) {
 		cpu.dmem[z] = cpu.dmem[i.source]
 		return
 	default:
-		fmt.Println("I dunno.")
+		fmt.Printf("CPU could not find instruction %s\n", getMnemonic(i.label))
 		return
 	}
 }

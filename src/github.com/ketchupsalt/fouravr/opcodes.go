@@ -189,6 +189,16 @@ func parseOpCode(b []byte) OpCode {
 	return o
 }
 
+func getMnemonic(i int) string {
+	m := "Not found."
+	for _, e := range OpCodeLookUpTable {
+		if e.label == i {
+			m = e.mnemonic
+		} 
+	}
+	return m
+}
+
 // Put all your changes above this line cuz it's hairy
 // down here.
 
