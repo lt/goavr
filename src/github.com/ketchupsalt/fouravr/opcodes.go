@@ -11,7 +11,7 @@ const (
 
 const (
 	INSN_UNK = iota
-	INSN_ADC 
+	INSN_ADC
 	INSN_ADD
 	INSN_ADIW
 	INSN_AND
@@ -179,6 +179,7 @@ type Instr struct {
 	displacement uint16
 	registerBit  byte
 	statusBit    uint16
+	objdump      string
 }
 
 type Program []Instr
@@ -194,7 +195,7 @@ func getMnemonic(i int) string {
 	for _, e := range OpCodeLookUpTable {
 		if e.label == i {
 			m = e.mnemonic
-		} 
+		}
 	}
 	return m
 }

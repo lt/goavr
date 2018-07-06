@@ -22,11 +22,12 @@ var programEnd uint16
 var bitMasks = []byte{1, 2, 4, 8, 16, 32, 64, 128}
 
 type CPU struct {
-	pc   uint16
-	sp   StackPointer
-	sr   byte
-	imem Memory
-	dmem Memory
+	pc      uint16
+	sp      StackPointer
+	sr      byte
+	imem    Memory
+	dmem    Memory
+	objdump bool
 }
 
 // Set bits in status register
@@ -113,7 +114,6 @@ func (cpu *CPU) Branch(offset int16) { cpu.pc = (cpu.pc + uint16(offset)) % 8192
 // Get the return value of a function for testing
 func (cpu *CPU) getReturnValue() uint16 { return b2u16little([]byte{cpu.dmem[24], cpu.dmem[25]}) }
 
-
 /*
 Golang Logical Operators: (because I'm tired of looking this shit up)
 +    ADD
@@ -126,7 +126,6 @@ Golang Logical Operators: (because I'm tired of looking this shit up)
 <<   left shift
 >>   right shift
 */
-
 
 func (cpu *CPU) Step() {
 	//defer handlePanic()
@@ -145,6 +144,7 @@ func (cpu *CPU) Run() {
 }
 
 func (cpu *CPU) Noise() {
+	cpu.objdump = true
 	fmt.Printf("pc: %.4x\tsr: %.8b\tsp: %.4x\t\n", cpu.pc, cpu.dmem[cpu.sr], cpu.sp.current())
 	cpu.dmem.printRegs()
 	cpu.dmem.printStack()
@@ -238,6 +238,9 @@ func (cpu *CPU) Interactive() {
 }
 
 func (cpu *CPU) Execute(i Instr) {
+	if cpu.objdump == true {
+		fmt.Printf("%.4x\t%s\n", cpu.pc, i.objdump)
+	}
 
 	switch i.label {
 	case INSN_UNK:
@@ -673,20 +676,20 @@ func (cpu *CPU) Execute(i Instr) {
 		if r != 0 {
 			cpu.clear_z()
 		}
-		if ((r & 0x0080) >> 7) == 1 {
+		if ((r & 0x80) >> 7) == 1 {
 			cpu.set_n()
 		} else {
 			cpu.clear_n()
 		}
-		if r > 0x00ff {
+		if r > 0xff {
 			cpu.set_v()
 		} else {
 			cpu.clear_v()
 		}
-		if (cpu.get_n() ^ cpu.get_v()) == 0 {
-			cpu.clear_s()
-		} else {
+		if r < 0 {
 			cpu.set_s()
+		} else {
+			cpu.clear_s()
 		}
 		return
 	case INSN_CPI:

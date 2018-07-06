@@ -1,4 +1,9 @@
-#include <string.h>
+char *mystrcpy(char *dest, char *src)
+{
+    while((*dest++ = *src++)!= '\0')
+        ; // <<== Very important!!!
+    return dest;
+}
 
 char *myitoa(i)
      int i;
@@ -27,7 +32,7 @@ int main(void) {
     char* str;
     char dest[4];
     str = myitoa(foo);
-    strcpy(dest, str);
+    mystrcpy(dest, str);
     return 0;
 }
 
